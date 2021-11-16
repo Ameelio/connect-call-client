@@ -7,7 +7,8 @@
     "build": "npx -p typescript tsc",
     "typecheck": "npx -p typescript tsc --noEmit",
     "lint": "npx eslint src/ --ext .ts,.tsx",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky install"
   },
   "author": "Lance Ivy <lance@cainlevy.net>",
   "private": true,
@@ -16,6 +17,13 @@
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
     "eslint": "^8.2.0",
+    "eslint-config-prettier": "^8.3.0",
+    "husky": "^7.0.4",
+    "lint-staged": "^12.0.2",
+    "prettier": "^2.4.1",
     "typescript": "^4.4.4"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
   }
 }
