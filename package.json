@@ -1,0 +1,17 @@
+{
+  "name": "connect-video-client",
+  "version": "0.0.0",
+  "description": "client for the connect-video platform",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx -p typescript tsc",
+    "typecheck": "npx -p typescript tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Lance Ivy <lance@cainlevy.net>",
+  "private": true,
+  "devDependencies": {
+    "@tsconfig/create-react-app": "^1.0.2",
+    "typescript": "^4.4.4"
+  }
+}
