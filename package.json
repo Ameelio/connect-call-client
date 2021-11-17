@@ -12,6 +12,10 @@
   },
   "author": "Lance Ivy <lance@cainlevy.net>",
   "private": true,
+  "dependencies": {
+    "mediasoup-client": "^3.6.45",
+    "socket.io-client": "^4.3.2"
+  },
   "devDependencies": {
     "@tsconfig/create-react-app": "^1.0.2",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
