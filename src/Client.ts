@@ -8,12 +8,12 @@ import {
 } from "mediasoup-client/lib/types";
 import SocketClient, { Socket } from "socket.io-client";
 
-type Participant = {
+export type Participant = {
   type: "inmate" | "doc" | "user";
   id: string;
 };
 
-type InCallStatus =
+export type InCallStatus =
   | "live"
   | "missing_monitor"
   | "ended"
