@@ -27,7 +27,7 @@ type WebRtcInfo = Pick<
 
 type ServerMessages = {
   callStatus: InCallStatus;
-  consume: ConsumerOptions & {
+  consume: Required<Omit<ConsumerOptions, "appData">> & {
     user: Participant;
   };
   participantDisconnect: Participant;

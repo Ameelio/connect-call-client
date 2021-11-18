@@ -7,11 +7,13 @@ import {
   ProducerOptions,
   Transport,
 } from "mediasoup-client/lib/types";
-import Client, { Participant } from "./Client";
+import Client, { InCallStatus, Participant } from "./Client";
+import mitt, { Emitter } from "mitt";
 
-async function getMedia(type: MediaKind, deviceId?: number) {
+async function getMedia(type: MediaKind, deviceId?: string) {
+  const constraint = deviceId ? { advanced: [{ deviceId }] } : true;
   return await navigator.mediaDevices.getUserMedia(
-    type === "audio" ? { audio: true } : { video: true }
+    type === "audio" ? { audio: constraint } : { video: constraint }
   );
 }
 
@@ -41,9 +43,23 @@ const config: Record<MediaKind, ProducerOptions> = {
   audio: {},
 };
 
+type Peer = {
+  user: Participant;
+  consumers: Partial<Record<MediaKind, Consumer>>;
+  stream: MediaStream;
+};
+
+type Events = {
+  onStatusChange: InCallStatus;
+  onPeerConnect: Participant;
+  onPeerDisconnect: Participant;
+  onPeerUpdate: Pick<Peer, "user" | "stream">;
+};
+
 class RoomClient {
-  private consumers: Record<string, Consumer> = {};
   private producers: Partial<Record<MediaKind, Producer>> = {};
+  private peers: Record<string, Peer> = {};
+  private emitter: Emitter<Events>;
 
   static async connect(call: {
     id: string;
@@ -118,6 +134,8 @@ class RoomClient {
     private producerTransport: Transport | null,
     private consumerTransport: Transport
   ) {
+    this.emitter = mitt();
+
     // integrate produce event with the server
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
     producerTransport?.on(
@@ -134,19 +152,64 @@ class RoomClient {
     );
 
     // listen for new peer tracks from the server
-    client.on("consume", async (info) => {
-      const consumer = await consumerTransport.consume(info);
-      // const stream = new MediaStream([consumer.track]);
-      this.consumers[consumer.id] = consumer;
+    client.on("consume", async ({ user, ...options }) => {
+      const consumer = await consumerTransport.consume(options);
+
+      if (!this.peers[user.id]) {
+        this.peers[user.id] = {
+          user,
+          consumers: {},
+          stream: new MediaStream(),
+        };
+        this.emitter.emit("onPeerConnect", user);
+      }
+
+      this.peers[user.id].consumers[options.kind] = consumer;
+      this.peers[user.id].stream.addTrack(consumer.track);
+      this.emitter.emit("onPeerUpdate", this.peers[user.id]);
     });
 
-    // let the server know we're ready to begin consuming
+    // listen for tracks pausing and resuming
+    client.on("producerUpdate", async ({ from, paused, type }) => {
+      const peer = this.peers[from.id];
+      if (!peer) throw new Error(`Unknown peer update ${from.type} ${from.id}`);
+      const track = peer.consumers[type]?.track;
+      if (track) {
+        paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
+      }
+
+      this.emitter.emit("onPeerUpdate", peer);
+    });
+
+    // listen for peers disconnecting
+    client.on("participantDisconnect", async (user) => {
+      const peer = this.peers[user.id];
+      peer.consumers.audio?.close();
+      peer.consumers.video?.close();
+      delete this.peers[user.id];
+      this.emitter.emit("onPeerDisconnect", user);
+    });
+
+    // listen for call status changes
+    client.on("callStatus", (status) => {
+      this.emitter.emit("onStatusChange", status);
+    });
+
+    // now that our handlers are prepared, we're reading to begin consuming
     void client.emit("finishConnecting", { callId });
+  }
+
+  on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
+    this.emitter.on(name, handler);
+  }
+
+  off<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
+    this.emitter.off(name, handler);
   }
 
   async produce(
     type: MediaKind,
-    deviceId?: number
+    deviceId?: string
   ): Promise<MediaStream | null> {
     if (!this.producerTransport)
       throw new Error(`RoomClient is not able to produce media`);
@@ -202,7 +265,11 @@ class RoomClient {
     this.producerTransport?.close();
     this.producers.audio?.close();
     this.producers.video?.close();
-    Object.values(this.consumers).forEach((consumer) => consumer.close());
+    this.emitter.all.clear();
+    Object.values(this.peers).forEach((peer) => {
+      peer.consumers.audio?.close();
+      peer.consumers.video?.close();
+    });
   }
 
   private async updateProducer(producer: Producer, paused: boolean) {
