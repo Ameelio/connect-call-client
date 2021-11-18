@@ -13,7 +13,7 @@ export type Participant = {
   id: string;
 };
 
-export type InCallStatus =
+export type CallStatus =
   | "live"
   | "missing_monitor"
   | "ended"
@@ -26,7 +26,7 @@ type WebRtcInfo = Pick<
 >;
 
 type ServerMessages = {
-  callStatus: InCallStatus;
+  callStatus: CallStatus;
   consume: Required<Omit<ConsumerOptions, "appData">> & {
     user: Participant;
   };

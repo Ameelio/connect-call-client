@@ -7,7 +7,7 @@ import {
   ProducerOptions,
   Transport,
 } from "mediasoup-client/lib/types";
-import Client, { InCallStatus, Participant } from "./Client";
+import Client, { CallStatus, Participant } from "./Client";
 import mitt, { Emitter } from "mitt";
 
 async function getMedia(type: MediaKind, deviceId?: string) {
@@ -43,22 +43,24 @@ const config: Record<MediaKind, ProducerOptions> = {
   audio: {},
 };
 
-type Peer = {
+export type Peer = {
   user: Participant;
-  consumers: Partial<Record<MediaKind, Consumer>>;
   stream: MediaStream;
 };
 
 type Events = {
-  onStatusChange: InCallStatus;
+  onStatusChange: CallStatus;
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
-  onPeerUpdate: Pick<Peer, "user" | "stream">;
+  onPeerUpdate: Peer;
 };
 
 class RoomClient {
   private producers: Partial<Record<MediaKind, Producer>> = {};
-  private peers: Record<string, Peer> = {};
+  private peers: Record<
+    string,
+    Peer & { consumers: Partial<Record<MediaKind, Consumer>> }
+  > = {};
   private emitter: Emitter<Events>;
 
   static async connect(call: {
