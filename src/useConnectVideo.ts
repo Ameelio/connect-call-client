@@ -134,9 +134,11 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
         paused: !localAudio.paused,
       });
     },
-    toggleVideo: () => {
+    toggleVideo: async () => {
       if (!client || !localVideo) return;
-      localVideo.paused ? client.resumeVideo() : client.pauseVideo();
+      localVideo.paused
+        ? await client.resumeVideo()
+        : await client.pauseVideo();
       setLocalVideo({
         ...localVideo,
         paused: !localVideo.paused,
