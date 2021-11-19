@@ -7,12 +7,13 @@
     "build": "npx -p typescript tsc",
     "typecheck": "npx -p typescript tsc --noEmit",
     "lint": "npx eslint src/ --ext .ts,.tsx",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx jest",
     "prepare": "husky install"
   },
   "author": "Lance Ivy <lance@cainlevy.net>",
   "private": true,
   "dependencies": {
+    "@testing-library/jest-dom": "^5.15.0",
     "mediasoup-client": "^3.6.45",
     "mitt": "^3.0.0",
     "socket.io-client": "^4.3.2"
@@ -21,7 +22,9 @@
     "react": "^17.0.2"
   },
   "devDependencies": {
+    "@testing-library/react": "^12.1.2",
     "@tsconfig/create-react-app": "^1.0.2",
+    "@types/jest": "^27.0.3",
     "@types/react": "^17.0.35",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
@@ -29,8 +32,10 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-react-hooks": "^4.3.0",
     "husky": "^7.0.4",
+    "jest": "^27.3.1",
     "lint-staged": "^12.0.2",
     "prettier": "^2.4.1",
+    "ts-jest": "^27.0.7",
     "typescript": "^4.4.4"
   },
   "lint-staged": {

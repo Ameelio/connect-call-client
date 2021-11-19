@@ -7,8 +7,9 @@ import {
   ProducerOptions,
   Transport,
 } from "mediasoup-client/lib/types";
-import Client, { CallStatus, Participant } from "./Client";
 import mitt, { Emitter } from "mitt";
+import { CallStatus, Participant } from "./API";
+import Client from "./Client";
 
 async function getMedia(type: MediaKind, deviceId?: string) {
   const constraint = deviceId ? { advanced: [{ deviceId }] } : true;

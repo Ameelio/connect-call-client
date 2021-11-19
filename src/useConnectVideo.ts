@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CallStatus, Participant } from "./Client";
+import { CallStatus, Participant } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
 type AudioStream = {

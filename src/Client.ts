@@ -1,94 +1,5 @@
-import {
-  ConsumerOptions,
-  DtlsParameters,
-  MediaKind,
-  RtpCapabilities,
-  RtpParameters,
-  TransportOptions,
-} from "mediasoup-client/lib/types";
 import SocketClient, { Socket } from "socket.io-client";
-
-export type Participant = {
-  type: "inmate" | "doc" | "user";
-  id: string;
-};
-
-export type CallStatus =
-  | "live"
-  | "missing_monitor"
-  | "ended"
-  | "terminated"
-  | "no_show";
-
-type WebRtcInfo = Pick<
-  TransportOptions,
-  "id" | "iceParameters" | "iceCandidates" | "dtlsParameters"
->;
-
-type ServerMessages = {
-  callStatus: CallStatus;
-  consume: Required<Omit<ConsumerOptions, "appData">> & {
-    user: Participant;
-  };
-  participantDisconnect: Participant;
-  joined: Participant & { callId: string };
-  producerUpdate: {
-    producerId: string;
-    from: Participant;
-    paused: boolean;
-    type: MediaKind;
-  };
-  textMessage: {
-    from: Participant;
-    contents: string;
-  };
-};
-
-type ClientMessages = {
-  authenticate: [Participant & { token: string }, { success: true }];
-  join: [
-    { callId: string; token: string },
-    {
-      consumerTransportInfo: WebRtcInfo;
-      producerTransportInfo?: WebRtcInfo;
-      routerRtpCapabilities: RtpCapabilities;
-    }
-  ];
-  declareRtpCapabilities: [
-    { rtpCapabilities: RtpCapabilities },
-    { success: true }
-  ];
-  establishDtls: [
-    {
-      callId: string;
-      transportId: string;
-      dtlsParameters: DtlsParameters;
-    },
-    { success: true }
-  ];
-  finishConnecting: [{ callId: string }, { success: true }];
-  produce: [
-    { callId: string; kind: MediaKind; rtpParameters: RtpParameters },
-    { producerId: string }
-  ];
-  producerUpdate: [
-    {
-      callId: string;
-      paused: boolean;
-      producerId: string;
-      type: MediaKind;
-    },
-    { success: true }
-  ];
-  textMessage: [
-    {
-      callId: string;
-      contents: string;
-    },
-    { success: true }
-  ];
-  terminate: [Record<string, never>, { success: true }];
-};
+import { ClientMessages, ServerMessages } from "./API";
 
 /**
  * Client is a typed wrapper for raw socket events sent to and from the server.
@@ -127,7 +38,7 @@ export default class Client {
     this.socket.close();
   }
 
-  waitFor<R>(event: string): Promise<R> {
+  async waitFor<R>(event: string): Promise<R> {
     return new Promise<R>((resolve) => this.socket.once(event, resolve));
   }
 
