@@ -1,8 +1,15 @@
+import "@testing-library/jest-dom";
+import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import useConnectVideo from "./useConnectVideo";
-import { render, waitFor, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
-import { ClientMessages } from "./API";
+import MediaDevices from "./__mocks__/MediaDevices";
+
+jest.mock("./Client");
+jest.mock("mediasoup-client");
+Object.defineProperty(navigator, "mediaDevices", {
+  writable: true,
+  value: MediaDevices,
+});
 
 const ConnectVideo = () => {
   const { status, error, localAudio, localVideo } = useConnectVideo({
@@ -23,74 +30,6 @@ const ConnectVideo = () => {
     </div>
   );
 };
-
-jest.mock("./Client", () => {
-  return class Client {
-    static async connect() {
-      return new this();
-    }
-
-    on = jest.fn();
-    off = jest.fn();
-    emit = jest.fn().mockImplementation((name: keyof ClientMessages) => {
-      if (name === "join") {
-        return {
-          consumerTransportInfo: {},
-          producerTransportInfo: {},
-          routerRtpCapabilities: {},
-        };
-      }
-    });
-    close() {
-      null;
-    }
-    async waitFor() {
-      return Promise.resolve();
-    }
-  };
-});
-
-jest.mock("mediasoup-client", () => {
-  return {
-    Device: () => ({
-      load: jest.fn(),
-      createSendTransport: jest.fn().mockImplementation(() => {
-        return {
-          on: jest.fn(),
-          close: jest.fn(),
-          produce: jest.fn(),
-        };
-      }),
-      createRecvTransport: jest.fn().mockImplementation(() => {
-        return {
-          on: jest.fn(),
-          close: jest.fn(),
-          produce: jest.fn(),
-        };
-      }),
-      rtpCapabilities: {},
-    }),
-  };
-});
-
-Object.defineProperty(navigator, "mediaDevices", {
-  writable: true,
-  value: {
-    getUserMedia: (constraints: { audio: any } | { video: any }) => {
-      if ("audio" in constraints) {
-        return { id: "audio", getAudioTracks: () => [] };
-      }
-      return {
-        id: "video",
-        getVideoTracks: () => [
-          {
-            getSettings: jest.fn().mockReturnValue({ width: 400, height: 300 }),
-          },
-        ],
-      };
-    },
-  },
-});
 
 describe("useConnectVideo", () => {
   it("connects", async () => {
