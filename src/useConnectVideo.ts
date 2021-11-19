@@ -53,12 +53,7 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
   useEffect(() => {
     if (!call || client) return;
 
-    RoomClient.connect({
-      ...call,
-      user: authInfo,
-    })
-      .then(setClient)
-      .catch(handleError);
+    RoomClient.connect(call).then(setClient).catch(handleError);
   }, [call, client, authInfo]);
 
   // 2. use RoomClient to begin producing and to export observable state
@@ -89,29 +84,31 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
       setStatus(status);
     });
 
-    client.produce("video").then((stream) => {
-      if (!stream)
-        return handleError(new Error("Could not produce video stream"));
-      const trackSettings = stream.getVideoTracks()[0].getSettings();
-      const videoWidth = trackSettings.width;
-      const videoHeight = trackSettings.height;
-      const aspectRatio =
-        videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
-      setLocalVideo({
-        stream,
-        paused: false,
-        aspectRatio,
+    if (client.role === "participant") {
+      client.produce("video").then((stream) => {
+        if (!stream)
+          return handleError(new Error("Could not produce video stream"));
+        const trackSettings = stream.getVideoTracks()[0].getSettings();
+        const videoWidth = trackSettings.width;
+        const videoHeight = trackSettings.height;
+        const aspectRatio =
+          videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
+        setLocalVideo({
+          stream,
+          paused: false,
+          aspectRatio,
+        });
       });
-    });
 
-    client.produce("audio").then((stream) => {
-      if (!stream)
-        return handleError(new Error("Could not produce audio stream"));
-      setLocalAudio({
-        stream,
-        paused: false,
+      client.produce("audio").then((stream) => {
+        if (!stream)
+          return handleError(new Error("Could not produce audio stream"));
+        setLocalAudio({
+          stream,
+          paused: false,
+        });
       });
-    });
+    }
   }, [client, status]);
 
   // eventual cleanup

@@ -3,6 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import useConnectVideo from "./useConnectVideo";
 import MediaDevices from "./__mocks__/MediaDevices";
+import Client from "./Client";
+import { Participant } from "./API";
 
 jest.mock("./Client");
 jest.mock("mediasoup-client");
@@ -20,9 +22,9 @@ const debugValue = (name: string) => {
   return value ? JSON.parse(value) : value;
 };
 
-const ConnectVideo = () => {
+const ConnectVideo = ({ type }: { type: Participant["type"] }) => {
   const { status, error, localAudio, localVideo } = useConnectVideo({
-    call: { id: "2", url: "a", token: "T1" },
+    call: { id: "2", url: type, token: "T1" },
     authInfo: { id: "1", type: "inmate", token: "T2" },
   });
 
@@ -37,8 +39,8 @@ const ConnectVideo = () => {
 };
 
 describe("useConnectVideo", () => {
-  it("connects", async () => {
-    render(<ConnectVideo />);
+  it("connects as a participant", async () => {
+    render(<ConnectVideo type="inmate" />);
 
     expect(debugValue("status")).toBe("initializing");
     expect(debugValue("error")).toBe("");
@@ -64,4 +66,20 @@ describe("useConnectVideo", () => {
       }
     `);
   });
+
+  it("connects as an observer", async () => {
+    render(<ConnectVideo type="doc" />);
+
+    expect(debugValue("status")).toBe("initializing");
+    expect(debugValue("error")).toBe("");
+
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
+
+    expect(debugValue("localAudio")).toMatchInlineSnapshot(`""`);
+    expect(debugValue("localVideo")).toMatchInlineSnapshot(`""`);
+  });
+
+  it.todo("toggles audio on and off");
+  it.todo("toggles video on and off");
+  it.todo("tracks peers");
 });

@@ -68,7 +68,6 @@ class RoomClient {
     id: string;
     url: string;
     token: string;
-    user: Participant;
   }): Promise<RoomClient> {
     const client = await Client.connect(call.url);
     // Request to join the room.
@@ -200,6 +199,10 @@ class RoomClient {
 
     // now that our handlers are prepared, we're reading to begin consuming
     void client.emit("finishConnecting", { callId });
+  }
+
+  get role() {
+    return this.producerTransport ? "participant" : "observer";
   }
 
   on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {

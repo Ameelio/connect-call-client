@@ -1,9 +1,11 @@
-import { ClientMessages } from "../API";
+import { ClientMessages, Participant } from "../API";
 
 export default class Client {
-  static async connect() {
-    return new this();
+  static async connect(type: Participant["type"]) {
+    return new this(type);
   }
+
+  constructor(private type: Participant["type"]) {}
 
   on = jest.fn();
   off = jest.fn();
@@ -11,7 +13,7 @@ export default class Client {
     if (name === "join") {
       return {
         consumerTransportInfo: {},
-        producerTransportInfo: {},
+        producerTransportInfo: this.type === "doc" ? undefined : {},
         routerRtpCapabilities: {},
       };
     }
