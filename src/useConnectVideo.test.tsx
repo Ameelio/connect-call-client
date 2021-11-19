@@ -11,6 +11,15 @@ Object.defineProperty(navigator, "mediaDevices", {
   value: MediaDevices,
 });
 
+const Debug = ({ name, value }: { name: string; value: unknown }) => (
+  <div data-testid={name}>{JSON.stringify(value)}</div>
+);
+
+const debugValue = (name: string) => {
+  const value = screen.getByTestId(name).textContent;
+  return value ? JSON.parse(value) : value;
+};
+
 const ConnectVideo = () => {
   const { status, error, localAudio, localVideo } = useConnectVideo({
     call: { id: "2", url: "a", token: "T1" },
@@ -19,14 +28,10 @@ const ConnectVideo = () => {
 
   return (
     <div>
-      <div data-testid="status">{status}</div>
-      <div data-testid="error">{error?.message}</div>
-      <div data-testid="localAudio">
-        {localAudio ? JSON.stringify(localAudio) : null}
-      </div>
-      <div data-testid="localVideo">
-        {localVideo ? JSON.stringify(localVideo) : null}
-      </div>
+      <Debug name="status" value={status} />
+      <Debug name="error" value={error?.message} />
+      <Debug name="localAudio" value={localAudio} />
+      <Debug name="localVideo" value={localVideo} />
     </div>
   );
 };
@@ -35,13 +40,28 @@ describe("useConnectVideo", () => {
   it("connects", async () => {
     render(<ConnectVideo />);
 
-    expect(screen.getByTestId("status")).toHaveTextContent("initializing");
-    expect(screen.getByTestId("error")).toHaveTextContent("");
+    expect(debugValue("status")).toBe("initializing");
+    expect(debugValue("error")).toBe("");
 
-    await waitFor(() =>
-      expect(screen.getByTestId("status")).toHaveTextContent("connected")
-    );
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
-    screen.debug();
+    expect(debugValue("localAudio")).toMatchInlineSnapshot(`
+      Object {
+        "paused": false,
+        "stream": Object {
+          "id": "audio",
+        },
+      }
+    `);
+
+    expect(debugValue("localVideo")).toMatchInlineSnapshot(`
+      Object {
+        "aspectRatio": 0.75,
+        "paused": false,
+        "stream": Object {
+          "id": "video",
+        },
+      }
+    `);
   });
 });
