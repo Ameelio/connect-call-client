@@ -1,7 +1,14 @@
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React from "react";
-import { Participant } from "./API";
+import Client from "./Client";
+import { clientFactory } from "./testFactories";
 import useConnectVideo from "./useConnectVideo";
 import MediaDevices from "./__mocks__/MediaDevices";
 
@@ -21,10 +28,10 @@ const debugValue = (name: string) => {
   return value ? JSON.parse(value) : value;
 };
 
-const ConnectVideo = ({ type }: { type: Participant["type"] }) => {
+const ConnectVideo = () => {
   const { status, error, localAudio, localVideo, toggleAudio, toggleVideo } =
     useConnectVideo({
-      call: { id: "2", url: type, token: "T1" },
+      call: { id: "2", url: "url", token: "T1" },
       authInfo: { id: "1", type: "inmate", token: "T2" },
     });
 
@@ -41,8 +48,14 @@ const ConnectVideo = ({ type }: { type: Participant["type"] }) => {
 };
 
 describe("useConnectVideo", () => {
+  let client: ReturnType<typeof clientFactory>;
+  beforeEach(() => {
+    client = clientFactory();
+    (Client.connect as jest.Mock).mockReturnValue(client);
+  });
+
   it("connects as a participant", async () => {
-    render(<ConnectVideo type="inmate" />);
+    render(<ConnectVideo />);
 
     expect(debugValue("status")).toBe("initializing");
 
@@ -52,7 +65,11 @@ describe("useConnectVideo", () => {
   });
 
   it("connects as an observer", async () => {
-    render(<ConnectVideo type="doc" />);
+    client.prepareServerResponse("join", {
+      consumerTransportInfo: {},
+      routerRtpCapabilities: {},
+    });
+    render(<ConnectVideo />);
 
     expect(debugValue("status")).toBe("initializing");
 
@@ -62,7 +79,7 @@ describe("useConnectVideo", () => {
   });
 
   it("toggles audio on and off", async () => {
-    render(<ConnectVideo type="user" />);
+    render(<ConnectVideo />);
 
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
@@ -74,7 +91,7 @@ describe("useConnectVideo", () => {
   });
 
   it("toggles video on and off", async () => {
-    render(<ConnectVideo type="user" />);
+    render(<ConnectVideo />);
 
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
@@ -86,4 +103,14 @@ describe("useConnectVideo", () => {
   });
 
   it.todo("tracks peers");
+
+  it("tracks call status changes", async () => {
+    render(<ConnectVideo />);
+
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
+
+    act(() => client.sendServerEvent("callStatus", "ended"));
+
+    await waitFor(() => expect(debugValue("status")).toBe("ended"));
+  });
 });
