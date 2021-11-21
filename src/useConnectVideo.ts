@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CallStatus, Participant } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
@@ -20,6 +20,8 @@ type Props = {
   authInfo: Participant & { token: string };
 };
 
+type Message = { user: Participant; contents: string };
+
 type ConnectVideo = {
   status: ClientStatus | CallStatus;
   error?: Error;
@@ -28,6 +30,8 @@ type ConnectVideo = {
   toggleAudio: () => void;
   toggleVideo: () => void;
   peers: Record<string, Peer>;
+  messages: Message[];
+  sendMessage: (contents: string) => Promise<void>;
 };
 
 /**
@@ -40,6 +44,7 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
   const [peers, setPeers] = useState<
     Record<string, { user: Participant; stream: MediaStream }>
   >({});
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const [error, setError] = useState<Error>();
   const [status, setStatus] = useState<ConnectVideo["status"]>("initializing");
@@ -109,6 +114,10 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
         });
       });
     }
+
+    client.on("onTextMessage", (message) => {
+      setMessages((existing) => [...existing, message]);
+    });
   }, [client, status]);
 
   // eventual cleanup
@@ -118,6 +127,19 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
     };
   }, [client]);
 
+  const sendMessage = useCallback(
+    async (contents: string) => {
+      if (!client) throw new Error("Not connected");
+      await client.sendMessage(contents);
+      console.log(authInfo);
+      setMessages((existing) => [
+        ...existing,
+        { contents, user: { id: authInfo.id, type: authInfo.type } },
+      ]);
+    },
+    [client, setMessages, authInfo]
+  );
+
   return {
     status,
     error,
@@ -125,7 +147,7 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
     localAudio,
     localVideo,
     toggleAudio: async () => {
-      if (!client || !localAudio) return;
+      if (!client || !localAudio) throw new Error("Not connected");
       localAudio.paused
         ? await client.resumeAudio()
         : await client.pauseAudio();
@@ -135,7 +157,7 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
       });
     },
     toggleVideo: async () => {
-      if (!client || !localVideo) return;
+      if (!client || !localVideo) throw new Error("Not connected");
       localVideo.paused
         ? await client.resumeVideo()
         : await client.pauseVideo();
@@ -144,6 +166,8 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
         paused: !localVideo.paused,
       });
     },
+    messages,
+    sendMessage,
   };
 };
 

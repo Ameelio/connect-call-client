@@ -54,6 +54,7 @@ type Events = {
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
+  onTextMessage: { user: Participant; contents: string };
 };
 
 class RoomClient {
@@ -195,6 +196,10 @@ class RoomClient {
     // listen for call status changes
     client.on("callStatus", (status) => {
       this.emitter.emit("onStatusChange", status);
+    });
+
+    client.on("textMessage", ({ from, contents }) => {
+      this.emitter.emit("onTextMessage", { user: from, contents });
     });
 
     // now that our handlers are prepared, we're reading to begin consuming

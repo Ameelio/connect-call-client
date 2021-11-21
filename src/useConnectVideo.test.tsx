@@ -43,6 +43,8 @@ const ConnectVideo = () => {
     toggleAudio,
     toggleVideo,
     peers,
+    messages,
+    sendMessage,
   } = useConnectVideo({
     call: { id: "2", url: "url", token: "T1" },
     authInfo: { id: "1", type: "inmate", token: "T2" },
@@ -55,8 +57,10 @@ const ConnectVideo = () => {
       <Debug name="localAudio" value={localAudio} />
       <Debug name="localVideo" value={localVideo} />
       <Debug name="peers" value={peers} />
+      <Debug name="messages" value={messages} />
       <button onClick={toggleAudio}>Audio</button>
       <button onClick={toggleVideo}>Video</button>
+      <button onClick={() => sendMessage("Hello")}>Send Hello</button>
     </div>
   );
 };
@@ -215,5 +219,52 @@ describe("useConnectVideo", () => {
     act(() => client.sendServerEvent("participantDisconnect", user));
     await waitFor(() => expect(debugValue("peers")["USER-01"]).toBeUndefined());
     expect(debugValue("peers")).toMatchInlineSnapshot(`Object {}`);
+  });
+
+  it("delivers messages", async () => {
+    render(<ConnectVideo />);
+
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
+
+    act(() => {
+      client.sendServerEvent("textMessage", {
+        from: { id: "2", type: "user" },
+        contents: "first",
+      });
+    });
+    await waitFor(() =>
+      expect(debugValue("messages")).toMatchInlineSnapshot(`
+        Array [
+          Object {
+            "contents": "first",
+            "user": Object {
+              "id": "2",
+              "type": "user",
+            },
+          },
+        ]
+      `)
+    );
+
+    fireEvent.click(screen.getByText("Send Hello"));
+    await waitFor(() => expect(debugValue("messages")).toHaveLength(2));
+    expect(debugValue("messages")).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "contents": "first",
+          "user": Object {
+            "id": "2",
+            "type": "user",
+          },
+        },
+        Object {
+          "contents": "Hello",
+          "user": Object {
+            "id": "1",
+            "type": "inmate",
+          },
+        },
+      ]
+    `);
   });
 });
