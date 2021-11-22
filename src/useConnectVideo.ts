@@ -140,32 +140,28 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
     [client, setMessages, authInfo]
   );
 
+  const audioPaused = localAudio?.paused;
+  const toggleAudio = useCallback(async () => {
+    if (!client || audioPaused === undefined) throw new Error("Not connected");
+    audioPaused ? await client.resumeAudio() : await client.pauseAudio();
+    setLocalAudio((existing) => ({ ...existing!, paused: !audioPaused }));
+  }, [client, audioPaused, setLocalAudio]);
+
+  const videoPaused = localVideo?.paused;
+  const toggleVideo = useCallback(async () => {
+    if (!client || videoPaused === undefined) throw new Error("Not connected");
+    videoPaused ? await client.resumeVideo() : await client.pauseVideo();
+    setLocalVideo((existing) => ({ ...existing!, paused: !videoPaused }));
+  }, [client, videoPaused, setLocalVideo]);
+
   return {
     status,
     error,
     peers,
     localAudio,
     localVideo,
-    toggleAudio: async () => {
-      if (!client || !localAudio) throw new Error("Not connected");
-      localAudio.paused
-        ? await client.resumeAudio()
-        : await client.pauseAudio();
-      setLocalAudio({
-        ...localAudio,
-        paused: !localAudio.paused,
-      });
-    },
-    toggleVideo: async () => {
-      if (!client || !localVideo) throw new Error("Not connected");
-      localVideo.paused
-        ? await client.resumeVideo()
-        : await client.pauseVideo();
-      setLocalVideo({
-        ...localVideo,
-        paused: !localVideo.paused,
-      });
-    },
+    toggleAudio,
+    toggleVideo,
     messages,
     sendMessage,
   };
