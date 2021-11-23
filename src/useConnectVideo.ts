@@ -20,6 +20,7 @@ type Props = {
   authInfo: Participant & { token: string };
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
+  onNewMessage?: (message: Message) => void;
 };
 
 type Message = { user: Participant; contents: string };
@@ -44,6 +45,7 @@ const useConnectVideo = ({
   authInfo,
   onPeerConnected,
   onPeerDisconnected,
+  onNewMessage,
 }: Props): ConnectVideo => {
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioStream>();
@@ -132,6 +134,12 @@ const useConnectVideo = ({
     client.on("onPeerDisconnect", onPeerDisconnected);
     return () => client.off("onPeerDisconnect", onPeerDisconnected);
   }, [client, onPeerDisconnected]);
+
+  useEffect(() => {
+    if (!client || !onNewMessage) return;
+    client.on("onTextMessage", onNewMessage);
+    return () => client.off("onTextMessage", onNewMessage);
+  });
 
   // eventual cleanup
   useEffect(() => {

@@ -36,6 +36,7 @@ const debugValue = (name: string) => {
 
 const handlePeerConnect = jest.fn();
 const handlePeerDisconnect = jest.fn();
+const handleNewMessage = jest.fn();
 
 const ConnectVideo = () => {
   const {
@@ -53,6 +54,7 @@ const ConnectVideo = () => {
     authInfo: { id: "1", type: "inmate", token: "T2" },
     onPeerConnected: handlePeerConnect,
     onPeerDisconnected: handlePeerDisconnect,
+    onNewMessage: handleNewMessage,
   });
 
   return (
@@ -77,6 +79,7 @@ describe("useConnectVideo", () => {
     (Client.connect as jest.Mock).mockReturnValue(client);
     handlePeerConnect.mockClear();
     handlePeerDisconnect.mockClear();
+    handleNewMessage.mockClear();
   });
 
   it("connects as a participant", async () => {
@@ -295,5 +298,25 @@ describe("useConnectVideo", () => {
         },
       ]
     `);
+  });
+
+  it("announces new messages", async () => {
+    render(<ConnectVideo />);
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
+
+    act(() => {
+      client.sendServerEvent("textMessage", {
+        from: { id: "2", type: "user" },
+        contents: "first",
+      });
+    });
+    act(() => {
+      client.sendServerEvent("textMessage", {
+        from: { id: "2", type: "user" },
+        contents: "second",
+      });
+    });
+
+    expect(handleNewMessage).toHaveBeenCalledTimes(2);
   });
 });
