@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "src/**.test.ts",
+    "src/**.test.tsx",
+    "src/__mocks__",
+    "src/testFactories.ts"
+  ],
+  "compilerOptions": {
+    "outDir": "lib",
+    "sourceMap": true,
+    "declaration": true,
+    "noEmit": false
+  }
+}

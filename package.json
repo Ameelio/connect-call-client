@@ -2,9 +2,14 @@
   "name": "connect-video-client",
   "version": "0.0.0",
   "description": "client for the connect-video platform",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/"
+  ],
   "scripts": {
-    "build": "npx -p typescript tsc",
+    "build": "npx -p typescript tsc -p tsconfig.build.json",
     "typecheck": "npx -p typescript tsc --noEmit",
     "lint": "npx eslint src/ --ext .ts,.tsx",
     "test": "npx jest",
@@ -23,7 +28,6 @@
   },
   "devDependencies": {
     "@testing-library/react": "^12.1.2",
-    "@tsconfig/create-react-app": "^1.0.2",
     "@types/jest": "^27.0.3",
     "@types/react": "^17.0.35",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
