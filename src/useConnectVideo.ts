@@ -29,7 +29,7 @@ type ConnectVideo = {
   localVideo: VideoStream | undefined;
   toggleAudio: () => void;
   toggleVideo: () => void;
-  peers: Record<string, Peer>;
+  peers: Peer[];
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
 };
@@ -42,8 +42,8 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
   const [localAudio, setLocalAudio] = useState<AudioStream>();
   const [localVideo, setLocalVideo] = useState<VideoStream>();
   const [peers, setPeers] = useState<
-    Record<string, { user: Participant; stream: MediaStream }>
-  >({});
+    { user: Participant; stream: MediaStream }[]
+  >([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
   const [error, setError] = useState<Error>();
@@ -67,22 +67,16 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
     if (!client || status !== "initializing") return;
     setStatus("connected");
 
-    client.on("onPeerConnect", (peer) => {
-      // TODO: announce
-    });
-    client.on("onPeerDisconnect", (peer) => {
-      // TODO: announce
-      setPeers((existing) => {
-        const newPeers = { ...existing };
-        delete newPeers[peer.id];
-        return newPeers;
-      });
+    client.on("onPeerDisconnect", (user) => {
+      setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
     });
     client.on("onPeerUpdate", ({ user, stream }) => {
-      setPeers((existing) => ({
-        ...existing,
-        [user.id]: { user, stream },
-      }));
+      setPeers((peers) => {
+        return [
+          ...peers.filter((p) => p.user.id !== user.id),
+          { user, stream },
+        ];
+      });
     });
 
     client.on("onStatusChange", (status) => {

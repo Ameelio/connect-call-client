@@ -137,15 +137,15 @@ describe("useConnectVideo", () => {
 
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
-    expect(debugValue("peers")).toMatchInlineSnapshot(`Object {}`);
+    expect(debugValue("peers")).toMatchInlineSnapshot(`Array []`);
 
     act(() =>
       client.sendServerEvent("consume", { user, kind: "audio" } as any)
     );
-    await waitFor(() => expect(debugValue("peers")).toHaveProperty("USER-01"));
+    await waitFor(() => expect(debugValue("peers")).toHaveLength(1));
     expect(debugValue("peers")).toMatchInlineSnapshot(`
-      Object {
-        "USER-01": Object {
+      Array [
+        Object {
           "stream": Object {
             "tracks": Array [
               Object {
@@ -158,18 +158,18 @@ describe("useConnectVideo", () => {
             "type": "user",
           },
         },
-      }
+      ]
     `);
 
     act(() =>
       client.sendServerEvent("consume", { user, kind: "video" } as any)
     );
     await waitFor(() =>
-      expect(debugValue("peers")["USER-01"].stream.tracks).toHaveLength(2)
+      expect(debugValue("peers")[0].stream.tracks).toHaveLength(2)
     );
     expect(debugValue("peers")).toMatchInlineSnapshot(`
-      Object {
-        "USER-01": Object {
+      Array [
+        Object {
           "stream": Object {
             "tracks": Array [
               Object {
@@ -185,7 +185,7 @@ describe("useConnectVideo", () => {
             "type": "user",
           },
         },
-      }
+      ]
     `);
 
     act(() =>
@@ -196,11 +196,11 @@ describe("useConnectVideo", () => {
       } as any)
     );
     await waitFor(() =>
-      expect(debugValue("peers")["USER-01"].stream.tracks).toHaveLength(1)
+      expect(debugValue("peers")[0].stream.tracks).toHaveLength(1)
     );
     expect(debugValue("peers")).toMatchInlineSnapshot(`
-      Object {
-        "USER-01": Object {
+      Array [
+        Object {
           "stream": Object {
             "tracks": Array [
               Object {
@@ -213,12 +213,12 @@ describe("useConnectVideo", () => {
             "type": "user",
           },
         },
-      }
+      ]
     `);
 
     act(() => client.sendServerEvent("participantDisconnect", user));
-    await waitFor(() => expect(debugValue("peers")["USER-01"]).toBeUndefined());
-    expect(debugValue("peers")).toMatchInlineSnapshot(`Object {}`);
+    await waitFor(() => expect(debugValue("peers")[0]).toBeUndefined());
+    expect(debugValue("peers")).toMatchInlineSnapshot(`Array []`);
   });
 
   it("delivers messages", async () => {
