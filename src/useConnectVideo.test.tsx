@@ -34,6 +34,9 @@ const debugValue = (name: string) => {
   return value ? JSON.parse(value) : value;
 };
 
+const handlePeerConnect = jest.fn();
+const handlePeerDisconnect = jest.fn();
+
 const ConnectVideo = () => {
   const {
     status,
@@ -48,6 +51,8 @@ const ConnectVideo = () => {
   } = useConnectVideo({
     call: { id: "2", url: "url", token: "T1" },
     authInfo: { id: "1", type: "inmate", token: "T2" },
+    onPeerConnected: handlePeerConnect,
+    onPeerDisconnected: handlePeerDisconnect,
   });
 
   return (
@@ -70,6 +75,8 @@ describe("useConnectVideo", () => {
   beforeEach(() => {
     client = clientFactory();
     (Client.connect as jest.Mock).mockReturnValue(client);
+    handlePeerConnect.mockClear();
+    handlePeerDisconnect.mockClear();
   });
 
   it("connects as a participant", async () => {
@@ -219,6 +226,28 @@ describe("useConnectVideo", () => {
     act(() => client.sendServerEvent("participantDisconnect", user));
     await waitFor(() => expect(debugValue("peers")[0]).toBeUndefined());
     expect(debugValue("peers")).toMatchInlineSnapshot(`Array []`);
+  });
+
+  it("alerts when peers connect and disconnect", async () => {
+    const user = { id: "USER-01", type: "user" as const };
+
+    render(<ConnectVideo />);
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
+
+    await act(async () =>
+      client.sendServerEvent("consume", { user, kind: "audio" } as any)
+    );
+    await act(async () =>
+      client.sendServerEvent("consume", { user, kind: "video" } as any)
+    );
+
+    expect(handlePeerConnect).toHaveBeenCalledTimes(1);
+
+    await act(async () =>
+      client.sendServerEvent("participantDisconnect", user)
+    );
+
+    expect(handlePeerDisconnect).toHaveBeenCalledTimes(1);
   });
 
   it("delivers messages", async () => {

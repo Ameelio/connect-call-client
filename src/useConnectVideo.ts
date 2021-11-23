@@ -18,6 +18,8 @@ type ClientStatus = "initializing" | "errored" | "connected";
 type Props = {
   call?: { id: string; url: string; token: string };
   authInfo: Participant & { token: string };
+  onPeerConnected?: (user: Participant) => void;
+  onPeerDisconnected?: (user: Participant) => void;
 };
 
 type Message = { user: Participant; contents: string };
@@ -37,7 +39,12 @@ type ConnectVideo = {
 /**
  * useConnectVideo integrates with the video room service and provides observable values.
  */
-const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
+const useConnectVideo = ({
+  call,
+  authInfo,
+  onPeerConnected,
+  onPeerDisconnected,
+}: Props): ConnectVideo => {
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioStream>();
   const [localVideo, setLocalVideo] = useState<VideoStream>();
@@ -113,6 +120,18 @@ const useConnectVideo = ({ call, authInfo }: Props): ConnectVideo => {
       setMessages((existing) => [...existing, message]);
     });
   }, [client, status]);
+
+  useEffect(() => {
+    if (!client || !onPeerConnected) return;
+    client.on("onPeerConnect", onPeerConnected);
+    return () => client.off("onPeerConnect", onPeerConnected);
+  }, [client, onPeerConnected]);
+
+  useEffect(() => {
+    if (!client || !onPeerDisconnected) return;
+    client.on("onPeerDisconnect", onPeerDisconnected);
+    return () => client.off("onPeerDisconnect", onPeerDisconnected);
+  }, [client, onPeerDisconnected]);
 
   // eventual cleanup
   useEffect(() => {
