@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CallStatus, Participant } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
@@ -67,96 +67,102 @@ const useConnectVideo = ({
     setError(e);
   };
 
-  // 1. create a RoomClient
-  useEffect(() => {
-    if (!call || client) return;
+  const handlePeerDisconnect = (user: Participant) =>
+    setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
 
+  const handlePeerUpdate = ({ user, stream }: Peer) => {
+    setPeers((peers) => {
+      return [...peers.filter((p) => p.user.id !== user.id), { user, stream }];
+    });
+  };
+
+  const handleStatusChange = (status: CallStatus) => setStatus(status);
+
+  const handleTextMessage = (message: {
+    user: Participant;
+    contents: string;
+  }) =>
+    setMessages((existing) => [
+      ...existing,
+      {
+        ...message,
+        timestamp: new Date(),
+      },
+    ]);
+
+  // create a client for the call
+  useEffect(() => {
+    if (!call) return;
     RoomClient.connect(call).then(setClient).catch(handleError);
-  }, [call, client, authInfo]);
+  }, [call, authInfo]);
 
-  // 2. use RoomClient to begin producing and to export observable state
   useEffect(() => {
-    // run once after acquiring a room client
-    if (!client || status !== "initializing") return;
+    if (!client) return;
     setStatus("connected");
-
-    if (client.role === "participant") {
-      client.produce("video").then((stream) => {
-        if (!stream)
-          return handleError(new Error("Could not produce video stream"));
-        const trackSettings = stream.getVideoTracks()[0].getSettings();
-        const videoWidth = trackSettings.width;
-        const videoHeight = trackSettings.height;
-        const aspectRatio =
-          videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
-        setLocalVideo({
-          stream,
-          paused: false,
-          aspectRatio,
-        });
-      });
-
-      client.produce("audio").then((stream) => {
-        if (!stream)
-          return handleError(new Error("Could not produce audio stream"));
-        setLocalAudio({
-          stream,
-          paused: false,
-        });
-      });
-    }
-
-    const handlePeerDisconnect = (user: Participant) =>
-      setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
-
-    const handlePeerUpdate = ({ user, stream }: Peer) => {
-      setPeers((peers) => {
-        return [
-          ...peers.filter((p) => p.user.id !== user.id),
-          { user, stream },
-        ];
-      });
+    return () => {
+      client.close();
     };
+  }, [client]);
 
-    const handleStatusChange = (status: CallStatus) => setStatus(status);
-
-    const handleTextMessage = (message: {
-      user: Participant;
-      contents: string;
-    }) =>
-      setMessages((existing) => [
-        ...existing,
-        {
-          ...message,
-          timestamp: new Date(),
-        },
-      ]);
-
+  // hook into the client
+  useEffect(() => {
+    if (!client) return;
     client.on("onPeerDisconnect", handlePeerDisconnect);
     client.on("onPeerUpdate", handlePeerUpdate);
     client.on("onStatusChange", handleStatusChange);
     client.on("onTextMessage", handleTextMessage);
-
     return () => {
       client.off("onPeerDisconnect", handlePeerDisconnect);
       client.off("onPeerUpdate", handlePeerUpdate);
       client.off("onStatusChange", handleStatusChange);
       client.off("onTextMessage", handleTextMessage);
     };
-  }, [client, status]);
+  }, [client]);
 
+  // produce media
+  useEffect(() => {
+    if (!client || client.role === "observer") return;
+
+    client.produce("video").then((stream) => {
+      if (!stream)
+        return handleError(new Error("Could not produce video stream"));
+      const trackSettings = stream.getVideoTracks()[0].getSettings();
+      const videoWidth = trackSettings.width;
+      const videoHeight = trackSettings.height;
+      const aspectRatio =
+        videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
+      setLocalVideo({
+        stream,
+        paused: false,
+        aspectRatio,
+      });
+    });
+
+    client.produce("audio").then((stream) => {
+      if (!stream)
+        return handleError(new Error("Could not produce audio stream"));
+      setLocalAudio({
+        stream,
+        paused: false,
+      });
+    });
+  }, [client]);
+
+  // announce peer connects
   useEffect(() => {
     if (!client || !onPeerConnected) return;
     client.on("onPeerConnect", onPeerConnected);
     return () => client.off("onPeerConnect", onPeerConnected);
   }, [client, onPeerConnected]);
 
+  // announce peer disconnects
   useEffect(() => {
     if (!client || !onPeerDisconnected) return;
     client.on("onPeerDisconnect", onPeerDisconnected);
     return () => client.off("onPeerDisconnect", onPeerDisconnected);
   }, [client, onPeerDisconnected]);
 
+  // announce text messages
   useEffect(() => {
     if (!client || !onNewMessage) return;
     const handler = (msg: { user: Participant; contents: string }) => {
@@ -165,13 +171,6 @@ const useConnectVideo = ({
     client.on("onTextMessage", handler);
     return () => client.off("onTextMessage", handler);
   });
-
-  // eventual cleanup
-  useEffect(() => {
-    return () => {
-      client?.close();
-    };
-  }, [client]);
 
   const sendMessage = useCallback(
     async (contents: string) => {
@@ -189,19 +188,19 @@ const useConnectVideo = ({
     [client, setMessages, authInfo]
   );
 
-  const audioPaused = localAudio?.paused;
   const toggleAudio = useCallback(async () => {
-    if (!client || audioPaused === undefined) throw new Error("Not connected");
-    audioPaused ? await client.resumeAudio() : await client.pauseAudio();
-    setLocalAudio((existing) => ({ ...existing!, paused: !audioPaused }));
-  }, [client, audioPaused, setLocalAudio]);
+    if (!client || localAudio?.paused === undefined)
+      throw new Error("Not connected");
+    localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
+    setLocalAudio((existing) => ({ ...existing!, paused: !localAudio.paused }));
+  }, [client, localAudio?.paused, setLocalAudio]);
 
-  const videoPaused = localVideo?.paused;
   const toggleVideo = useCallback(async () => {
-    if (!client || videoPaused === undefined) throw new Error("Not connected");
-    videoPaused ? await client.resumeVideo() : await client.pauseVideo();
-    setLocalVideo((existing) => ({ ...existing!, paused: !videoPaused }));
-  }, [client, videoPaused, setLocalVideo]);
+    if (!client || localVideo?.paused === undefined)
+      throw new Error("Not connected");
+    localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
+    setLocalVideo((existing) => ({ ...existing!, paused: !localVideo.paused }));
+  }, [client, localVideo?.paused, setLocalVideo]);
 
   return {
     status,

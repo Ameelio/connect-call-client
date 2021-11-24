@@ -39,6 +39,9 @@ const handlePeerConnect = jest.fn();
 const handlePeerDisconnect = jest.fn();
 const handleNewMessage = jest.fn();
 
+const call = { id: "2", url: "url", token: "T1" };
+const authInfo = { id: "1", type: "inmate" as const, token: "T2" };
+
 const ConnectVideo = () => {
   const {
     status,
@@ -51,8 +54,8 @@ const ConnectVideo = () => {
     messages,
     sendMessage,
   } = useConnectVideo({
-    call: { id: "2", url: "url", token: "T1" },
-    authInfo: { id: "1", type: "inmate", token: "T2" },
+    call,
+    authInfo,
     onPeerConnected: handlePeerConnect,
     onPeerDisconnected: handlePeerDisconnect,
     onNewMessage: handleNewMessage,
@@ -258,7 +261,6 @@ describe("useConnectVideo", () => {
 
   it("delivers messages", async () => {
     render(<ConnectVideo />);
-
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
     act(() => {
@@ -267,6 +269,7 @@ describe("useConnectVideo", () => {
         contents: "first",
       });
     });
+
     await waitFor(() => expect(debugValue("messages")).toHaveLength(1));
     expect(debugValue("messages")).toMatchInlineSnapshot(`
       Array [
