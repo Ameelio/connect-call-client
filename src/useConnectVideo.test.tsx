@@ -12,6 +12,7 @@ import { clientFactory } from "./testFactories";
 import useConnectVideo from "./useConnectVideo";
 import MediaDevices from "./__mocks__/MediaDevices";
 import MediaStream from "./__mocks__/MediaStream";
+import { advanceTo } from "jest-date-mock";
 
 jest.mock("./Client");
 jest.mock("mediasoup-client");
@@ -71,6 +72,8 @@ const ConnectVideo = () => {
     </div>
   );
 };
+
+advanceTo(new Date("2021-11-23T12:34:56.789Z"));
 
 describe("useConnectVideo", () => {
   let client: ReturnType<typeof clientFactory>;
@@ -264,33 +267,32 @@ describe("useConnectVideo", () => {
         contents: "first",
       });
     });
-    await waitFor(() =>
-      expect(debugValue("messages")).toMatchInlineSnapshot(`
-        Array [
-          Object {
-            "contents": "first",
-            "user": Object {
-              "id": "2",
-              "type": "user",
-            },
-          },
-        ]
-      `)
-    );
-
-    fireEvent.click(screen.getByText("Send Hello"));
-    await waitFor(() => expect(debugValue("messages")).toHaveLength(2));
+    await waitFor(() => expect(debugValue("messages")).toHaveLength(1));
     expect(debugValue("messages")).toMatchInlineSnapshot(`
       Array [
         Object {
           "contents": "first",
+          "timestamp": "2021-11-23T12:34:56.789Z",
           "user": Object {
             "id": "2",
             "type": "user",
           },
         },
+      ]
+    `);
+  });
+
+  it("sends messages", async () => {
+    render(<ConnectVideo />);
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
+
+    fireEvent.click(screen.getByText("Send Hello"));
+    await waitFor(() => expect(debugValue("messages")).toHaveLength(1));
+    expect(debugValue("messages")).toMatchInlineSnapshot(`
+      Array [
         Object {
           "contents": "Hello",
+          "timestamp": "2021-11-23T12:34:56.789Z",
           "user": Object {
             "id": "1",
             "type": "inmate",

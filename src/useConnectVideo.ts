@@ -23,7 +23,11 @@ type Props = {
   onNewMessage?: (message: Message) => void;
 };
 
-type Message = { user: Participant; contents: string };
+type Message = {
+  user: Participant;
+  contents: string;
+  timestamp: Date;
+};
 
 type ConnectVideo = {
   status: ClientStatus | CallStatus;
@@ -119,7 +123,13 @@ const useConnectVideo = ({
     }
 
     client.on("onTextMessage", (message) => {
-      setMessages((existing) => [...existing, message]);
+      setMessages((existing) => [
+        ...existing,
+        {
+          ...message,
+          timestamp: new Date(),
+        },
+      ]);
     });
   }, [client, status]);
 
@@ -137,8 +147,11 @@ const useConnectVideo = ({
 
   useEffect(() => {
     if (!client || !onNewMessage) return;
-    client.on("onTextMessage", onNewMessage);
-    return () => client.off("onTextMessage", onNewMessage);
+    const handler = (msg: { user: Participant; contents: string }) => {
+      onNewMessage({ ...msg, timestamp: new Date() });
+    };
+    client.on("onTextMessage", handler);
+    return () => client.off("onTextMessage", handler);
   });
 
   // eventual cleanup
@@ -152,10 +165,13 @@ const useConnectVideo = ({
     async (contents: string) => {
       if (!client) throw new Error("Not connected");
       await client.sendMessage(contents);
-      console.log(authInfo);
       setMessages((existing) => [
         ...existing,
-        { contents, user: { id: authInfo.id, type: authInfo.type } },
+        {
+          contents,
+          user: { id: authInfo.id, type: authInfo.type },
+          timestamp: new Date(),
+        },
       ]);
     },
     [client, setMessages, authInfo]
