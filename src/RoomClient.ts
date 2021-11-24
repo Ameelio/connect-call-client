@@ -218,10 +218,7 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
-  async produce(
-    type: MediaKind,
-    deviceId?: string
-  ): Promise<MediaStream | null> {
+  async produce(type: MediaKind, deviceId?: string): Promise<MediaStream> {
     if (!this.producerTransport)
       throw new Error(`RoomClient is not able to produce media`);
     if (this.producers[type])
