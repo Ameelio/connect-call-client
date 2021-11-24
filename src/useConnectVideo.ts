@@ -2,18 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import { CallStatus, Participant } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
-type AudioStream = {
+export type AudioStream = {
   stream: MediaStream;
   paused: boolean;
 };
 
-type VideoStream = {
+export type VideoStream = {
   stream: MediaStream;
   paused: boolean;
   aspectRatio?: number;
 };
 
-type ClientStatus = "initializing" | "errored" | "connected";
+export type ClientStatus = "initializing" | "errored" | "connected";
 
 type Props = {
   call?: { id: string; url: string; token: string };
@@ -23,13 +23,13 @@ type Props = {
   onNewMessage?: (message: Message) => void;
 };
 
-type Message = {
+export type Message = {
   user: Participant;
   contents: string;
   timestamp: Date;
 };
 
-type ConnectVideo = {
+export type ConnectVideo = {
   status: ClientStatus | CallStatus;
   error?: Error;
   localAudio: AudioStream | undefined;
