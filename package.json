@@ -16,7 +16,6 @@
     "prepare": "husky install"
   },
   "author": "Lance Ivy <lance@cainlevy.net>",
-  "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.15.0",
     "mediasoup-client": "^3.6.45",
