@@ -1,7 +1,7 @@
 {
-  "name": "connect-video-client",
+  "name": "connect-call-client",
   "version": "0.0.0",
-  "description": "client for the connect-video platform",
+  "description": "client for the connect-call platform",
   "main": "lib/index.js",
   "module": "lib/index.js",
   "types": "lib/index.d.ts",

@@ -9,7 +9,7 @@ import {
 import React from "react";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
-import useConnectVideo from "./useConnectVideo";
+import useConnectCall from "./useConnectCall";
 import MediaDevices from "./__mocks__/MediaDevices";
 import MediaStream from "./__mocks__/MediaStream";
 import { advanceTo } from "jest-date-mock";
@@ -42,7 +42,7 @@ const handleNewMessage = jest.fn();
 const call = { id: "2", url: "url", token: "T1" };
 const authInfo = { id: "1", type: "inmate" as const, token: "T2" };
 
-const ConnectVideo = () => {
+const ConnectCall = () => {
   const {
     status,
     error,
@@ -53,7 +53,7 @@ const ConnectVideo = () => {
     peers,
     messages,
     sendMessage,
-  } = useConnectVideo({
+  } = useConnectCall({
     call,
     authInfo,
     onPeerConnected: handlePeerConnect,
@@ -78,7 +78,7 @@ const ConnectVideo = () => {
 
 advanceTo(new Date("2021-11-23T12:34:56.789Z"));
 
-describe("useConnectVideo", () => {
+describe("useConnectCall", () => {
   let client: ReturnType<typeof clientFactory>;
   beforeEach(() => {
     client = clientFactory();
@@ -89,7 +89,7 @@ describe("useConnectVideo", () => {
   });
 
   it("connects as a participant", async () => {
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
 
     expect(debugValue("status")).toBe("initializing");
 
@@ -103,7 +103,7 @@ describe("useConnectVideo", () => {
       consumerTransportInfo: {},
       routerRtpCapabilities: {},
     });
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
 
     expect(debugValue("status")).toBe("initializing");
 
@@ -113,7 +113,7 @@ describe("useConnectVideo", () => {
   });
 
   it("toggles audio on and off", async () => {
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
 
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
@@ -125,7 +125,7 @@ describe("useConnectVideo", () => {
   });
 
   it("toggles video on and off", async () => {
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
 
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
@@ -137,7 +137,7 @@ describe("useConnectVideo", () => {
   });
 
   it("tracks call status changes", async () => {
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
 
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
@@ -149,7 +149,7 @@ describe("useConnectVideo", () => {
   it("tracks peer media", async () => {
     const user = { id: "USER-01", type: "user" as const };
 
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
 
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
@@ -240,7 +240,7 @@ describe("useConnectVideo", () => {
   it("alerts when peers connect and disconnect", async () => {
     const user = { id: "USER-01", type: "user" as const };
 
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
     await act(async () =>
@@ -260,7 +260,7 @@ describe("useConnectVideo", () => {
   });
 
   it("delivers messages", async () => {
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
     act(() => {
@@ -286,7 +286,7 @@ describe("useConnectVideo", () => {
   });
 
   it("sends messages", async () => {
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
     fireEvent.click(screen.getByText("Send Hello"));
@@ -306,7 +306,7 @@ describe("useConnectVideo", () => {
   });
 
   it("announces new messages", async () => {
-    render(<ConnectVideo />);
+    render(<ConnectCall />);
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
 
     act(() => {

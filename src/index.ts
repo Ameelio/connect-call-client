@@ -1,5 +1,5 @@
-export { default as useConnectVideo } from "./useConnectVideo";
+export { default as useConnectCall } from "./useConnectCall";
 export { default as RoomClient } from "./RoomClient";
 export * from "./API";
-export * from "./useConnectVideo";
+export * from "./useConnectCall";
 export * from "./RoomClient";

@@ -29,7 +29,7 @@ export type Message = {
   timestamp: Date;
 };
 
-export type ConnectVideo = {
+export type ConnectCall = {
   status: ClientStatus | CallStatus;
   error?: Error;
   localAudio: AudioStream | undefined;
@@ -42,15 +42,15 @@ export type ConnectVideo = {
 };
 
 /**
- * useConnectVideo integrates with the video room service and provides observable values.
+ * useConnectCall integrates with RoomClient and provides observable values.
  */
-const useConnectVideo = ({
+const useConnectCall = ({
   call,
   authInfo,
   onPeerConnected,
   onPeerDisconnected,
   onNewMessage,
-}: Props): ConnectVideo => {
+}: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioStream>();
   const [localVideo, setLocalVideo] = useState<VideoStream>();
@@ -60,7 +60,7 @@ const useConnectVideo = ({
   const [messages, setMessages] = useState<Message[]>([]);
 
   const [error, setError] = useState<Error>();
-  const [status, setStatus] = useState<ConnectVideo["status"]>("initializing");
+  const [status, setStatus] = useState<ConnectCall["status"]>("initializing");
 
   const handleError = (e: Error) => {
     setStatus("errored");
@@ -222,4 +222,4 @@ const useConnectVideo = ({
   };
 };
 
-export default useConnectVideo;
+export default useConnectCall;
