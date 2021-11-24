@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CallStatus, Participant } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
@@ -92,9 +92,14 @@ const useConnectVideo = ({
 
   // create a client for the call
   useEffect(() => {
-    if (!call) return;
-    RoomClient.connect(call).then(setClient).catch(handleError);
-  }, [call, authInfo]);
+    if (call?.id === undefined) return;
+    RoomClient.connect(
+      { id: call.id, url: call.url, token: call.token },
+      authInfo
+    )
+      .then(setClient)
+      .catch(handleError);
+  }, [call?.id, call?.url, call?.token, authInfo]);
 
   useEffect(() => {
     if (!client) return;
