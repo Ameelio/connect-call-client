@@ -80,22 +80,6 @@ const useConnectVideo = ({
     if (!client || status !== "initializing") return;
     setStatus("connected");
 
-    client.on("onPeerDisconnect", (user) => {
-      setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
-    });
-    client.on("onPeerUpdate", ({ user, stream }) => {
-      setPeers((peers) => {
-        return [
-          ...peers.filter((p) => p.user.id !== user.id),
-          { user, stream },
-        ];
-      });
-    });
-
-    client.on("onStatusChange", (status) => {
-      setStatus(status);
-    });
-
     if (client.role === "participant") {
       client.produce("video").then((stream) => {
         if (!stream)
@@ -122,7 +106,24 @@ const useConnectVideo = ({
       });
     }
 
-    client.on("onTextMessage", (message) => {
+    const handlePeerDisconnect = (user: Participant) =>
+      setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
+
+    const handlePeerUpdate = ({ user, stream }: Peer) => {
+      setPeers((peers) => {
+        return [
+          ...peers.filter((p) => p.user.id !== user.id),
+          { user, stream },
+        ];
+      });
+    };
+
+    const handleStatusChange = (status: CallStatus) => setStatus(status);
+
+    const handleTextMessage = (message: {
+      user: Participant;
+      contents: string;
+    }) =>
       setMessages((existing) => [
         ...existing,
         {
@@ -130,7 +131,18 @@ const useConnectVideo = ({
           timestamp: new Date(),
         },
       ]);
-    });
+
+    client.on("onPeerDisconnect", handlePeerDisconnect);
+    client.on("onPeerUpdate", handlePeerUpdate);
+    client.on("onStatusChange", handleStatusChange);
+    client.on("onTextMessage", handleTextMessage);
+
+    return () => {
+      client.off("onPeerDisconnect", handlePeerDisconnect);
+      client.off("onPeerUpdate", handlePeerUpdate);
+      client.off("onStatusChange", handleStatusChange);
+      client.off("onTextMessage", handleTextMessage);
+    };
   }, [client, status]);
 
   useEffect(() => {
