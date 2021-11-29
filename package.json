@@ -14,7 +14,8 @@
     "typecheck": "npx -p typescript tsc --noEmit",
     "lint": "npx eslint src/ --ext .ts,.tsx",
     "test": "npx jest",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "prepublishOnly": "npm run typecheck && npm run lint --quiet && npm run test"
   },
   "author": "Lance Ivy <lance@cainlevy.net>",
   "dependencies": {
