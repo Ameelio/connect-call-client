@@ -1,6 +1,6 @@
 {
   "name": "connect-call-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "client for the connect-call platform",
   "license": "GPL-3.0",
   "main": "lib/index.js",
@@ -15,7 +15,7 @@
     "lint": "npx eslint src/ --ext .ts,.tsx",
     "test": "npx jest",
     "prepare": "husky install",
-    "prepublishOnly": "npm run typecheck && npm run lint --quiet && npm run test"
+    "prepublishOnly": "npm run lint --quiet && npm run test && npm run build"
   },
   "author": "Lance Ivy <lance@cainlevy.net>",
   "dependencies": {
