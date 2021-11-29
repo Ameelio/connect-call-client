@@ -1,0 +1,25 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: c-hive/gha-npm-cache@v1
+      - name: Install node modules
+        run: npm install
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Check lint
+        run: npm run lint --quiet
+
+      - name: Run tests
+        run: npm run test
