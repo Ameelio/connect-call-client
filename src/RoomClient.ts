@@ -195,10 +195,12 @@ class RoomClient {
     // listen for peers disconnecting
     client.on("participantDisconnect", async (user) => {
       const peer = this.peers[user.id];
-      peer.consumers.audio?.close();
-      peer.consumers.video?.close();
-      delete this.peers[user.id];
-      this.emitter.emit("onPeerDisconnect", user);
+      if (peer) {
+        peer.consumers.audio?.close();
+        peer.consumers.video?.close();
+        delete this.peers[user.id];
+        this.emitter.emit("onPeerDisconnect", user);
+      }
     });
 
     // listen for call status changes

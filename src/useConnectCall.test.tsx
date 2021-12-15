@@ -259,6 +259,19 @@ describe("useConnectCall", () => {
     expect(handlePeerDisconnect).toHaveBeenCalledTimes(1);
   });
 
+  it("handles peers disconnecting without producing", async () => {
+    const user = { id: "USER-01", type: "user" as const };
+
+    render(<ConnectCall />);
+    await waitFor(() => expect(debugValue("status")).toBe("connected"));
+
+    await act(async () =>
+      client.sendServerEvent("participantDisconnect", user)
+    );
+
+    expect(handlePeerDisconnect).toHaveBeenCalledTimes(1);
+  });
+
   it("delivers messages", async () => {
     render(<ConnectCall />);
     await waitFor(() => expect(debugValue("status")).toBe("connected"));
