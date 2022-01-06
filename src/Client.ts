@@ -1,4 +1,4 @@
-import SocketClient, { Socket } from "socket.io-client";
+import { io as SocketClient, Socket } from "socket.io-client";
 import { ClientMessages, ServerMessages } from "./API";
 
 /**
