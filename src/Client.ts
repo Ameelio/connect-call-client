@@ -17,7 +17,7 @@ export default class Client {
   }
 
   protected constructor(url: string) {
-    this.socket = SocketClient(url);
+    this.socket = SocketClient(url, { transports: ["websocket"] });
   }
 
   on<E extends keyof ServerMessages>(
