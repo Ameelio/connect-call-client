@@ -4,7 +4,7 @@ import { act as actHook, renderHook } from "@testing-library/react-hooks";
 import { advanceTo } from "jest-date-mock";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
-import useConnectCall from "./useConnectCall";
+import useConnectCall, { CallType } from "./useConnectCall";
 import MediaDevices from "./__mocks__/MediaDevices";
 import MediaStream from "./__mocks__/MediaStream";
 
@@ -24,7 +24,12 @@ const onPeerConnected = jest.fn();
 const onPeerDisconnected = jest.fn();
 const onNewMessage = jest.fn();
 
-const call = { id: "2", url: "url", token: "T1" };
+const call = {
+  id: "2",
+  url: "url",
+  token: "T1",
+  type: CallType.VIDEO_CALL,
+};
 const authInfo = { id: "1", type: "inmate" as const, token: "T2" };
 
 advanceTo(new Date("2021-11-23T12:34:56.789Z"));
@@ -76,6 +81,22 @@ describe("useConnectCall", () => {
 
     await waitFor(() => expect(result.current.status).toBe("connected"));
     expect(result.current.localAudio).toBeUndefined();
+    expect(result.current.localVideo).toBeUndefined();
+  });
+
+  it("voice calls do not produce video", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({
+        call: { ...call, type: CallType.VOICE_CALL },
+        authInfo,
+        onPeerConnected,
+        onPeerDisconnected,
+        onNewMessage,
+      })
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+    expect(result.current.localAudio).toBeTruthy();
     expect(result.current.localVideo).toBeUndefined();
   });
 
