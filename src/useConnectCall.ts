@@ -15,8 +15,18 @@ export type VideoStream = {
 
 export type ClientStatus = "initializing" | "errored" | "connected";
 
+export enum CallType {
+  VIDEO_CALL,
+  VOICE_CALL,
+}
+
 type Props = {
-  call?: { id: string; url: string; token: string };
+  call?: {
+    id: string;
+    url: string;
+    token: string;
+    type: CallType;
+  };
   authInfo: Participant & { token: string };
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
@@ -128,21 +138,23 @@ const useConnectCall = ({
   useEffect(() => {
     if (!client || client.role === "observer") return;
 
-    client
-      .produce("video")
-      .then((stream) => {
-        const trackSettings = stream.getVideoTracks()[0].getSettings();
-        const videoWidth = trackSettings.width;
-        const videoHeight = trackSettings.height;
-        const aspectRatio =
-          videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
-        setLocalVideo({
-          stream,
-          paused: false,
-          aspectRatio,
-        });
-      })
-      .catch(handleError);
+    if (call?.type === CallType.VIDEO_CALL) {
+      client
+        .produce("video")
+        .then((stream) => {
+          const trackSettings = stream.getVideoTracks()[0].getSettings();
+          const videoWidth = trackSettings.width;
+          const videoHeight = trackSettings.height;
+          const aspectRatio =
+            videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
+          setLocalVideo({
+            stream,
+            paused: false,
+            aspectRatio,
+          });
+        })
+        .catch(handleError);
+    }
 
     client
       .produce("audio")
@@ -153,7 +165,7 @@ const useConnectCall = ({
         });
       })
       .catch(handleError);
-  }, [client]);
+  }, [client, call?.type]);
 
   // announce peer connects
   useEffect(() => {
