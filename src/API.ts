@@ -44,7 +44,6 @@ export type ServerMessages = {
 };
 
 export type ClientMessages = {
-  authenticate: [Participant & { token: string }, { success: true }];
   join: [
     { callId: string; token: string },
     {

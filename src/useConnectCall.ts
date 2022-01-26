@@ -103,13 +103,10 @@ const useConnectCall = ({
   // create a client for the call
   useEffect(() => {
     if (call?.id === undefined) return;
-    RoomClient.connect(
-      { id: call.id, url: call.url, token: call.token },
-      authInfo
-    )
+    RoomClient.connect({ id: call.id, url: call.url, token: call.token })
       .then(setClient)
       .catch(handleError);
-  }, [call?.id, call?.url, call?.token, authInfo]);
+  }, [call?.id, call?.url, call?.token]);
 
   useEffect(() => {
     if (!client) return;
