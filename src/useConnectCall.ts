@@ -49,6 +49,7 @@ export type ConnectCall = {
   peers: Peer[];
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
+  terminateCall: () => Promise<void>;
 };
 
 /**
@@ -221,6 +222,13 @@ const useConnectCall = ({
     setLocalVideo((existing) => ({ ...existing!, paused: !localVideo.paused }));
   }, [client, localVideo?.paused, setLocalVideo]);
 
+  const terminateCall = useCallback(async () => {
+    if (!client) throw new Error("Not connected");
+    if (client.role !== "observer")
+      throw new Error("Only DOC can perform this action");
+    await client.terminate();
+  }, [client]);
+
   return {
     status,
     error,
@@ -231,6 +239,7 @@ const useConnectCall = ({
     toggleVideo,
     messages,
     sendMessage,
+    terminateCall,
   };
 };
 
