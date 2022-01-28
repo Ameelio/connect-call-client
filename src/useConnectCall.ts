@@ -224,8 +224,6 @@ const useConnectCall = ({
 
   const terminateCall = useCallback(async () => {
     if (!client) throw new Error("Not connected");
-    if (client.role !== "observer")
-      throw new Error("Only DOC can perform this action");
     await client.terminate();
   }, [client]);
 

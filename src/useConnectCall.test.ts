@@ -395,29 +395,7 @@ describe("useConnectCall", () => {
     expect(onNewMessage).toHaveBeenCalledTimes(2);
   });
 
-  it("user cannot terminate the call", async () => {
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call,
-        authInfo,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
-    );
-
-    expect(result.current.status).toBe("initializing");
-    await waitFor(() => expect(result.current.status).toBe("connected"));
-    const promise = actHook(() => result.current.terminateCall());
-    await expect(promise).rejects.toThrowError(
-      "Only DOC can perform this action"
-    );
-  });
-  it("DOC can terminate the call", async () => {
-    client.prepareServerResponse("join", {
-      consumerTransportInfo: {},
-      routerRtpCapabilities: {},
-    });
+  it("participant can terminate the call", async () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
@@ -431,6 +409,6 @@ describe("useConnectCall", () => {
     expect(result.current.status).toBe("initializing");
     await waitFor(() => expect(result.current.status).toBe("connected"));
     const res = await actHook(() => result.current.terminateCall());
-    expect(res).toBe(undefined);
+    expect(res).toBeUndefined();
   });
 });
