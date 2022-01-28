@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Stop sending deprecated `authenticate` event
+
 ## [0.1.4] - 2022-01-06
 
 ### Fixed

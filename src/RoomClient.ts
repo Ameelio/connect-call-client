@@ -65,19 +65,12 @@ class RoomClient {
   > = {};
   private emitter: Emitter<Events>;
 
-  static async connect(
-    call: {
-      id: string;
-      url: string;
-      token: string;
-    },
-    user: Participant
-  ): Promise<RoomClient> {
+  static async connect(call: {
+    id: string;
+    url: string;
+    token: string;
+  }): Promise<RoomClient> {
     const client = await Client.connect(call.url);
-    client.emit("authenticate", {
-      ...user,
-      token: call.token,
-    });
 
     // Request to join the room.
     const {
