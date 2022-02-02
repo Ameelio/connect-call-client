@@ -24,6 +24,7 @@ type Props = {
   authInfo: Participant & { token: string };
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
+  onTimer?: (name: "maxDuration", msRemaining: number) => void;
   onNewMessage?: (message: Message) => void;
 };
 
@@ -55,6 +56,7 @@ const useConnectCall = ({
   authInfo,
   onPeerConnected,
   onPeerDisconnected,
+  onTimer,
   onNewMessage,
 }: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
@@ -96,6 +98,16 @@ const useConnectCall = ({
       },
     ]);
 
+  const handleTimer = ({
+    name,
+    msRemaining,
+  }: {
+    name: "maxDuration";
+    msRemaining: number;
+  }) => {
+    onTimer && onTimer(name, msRemaining);
+  };
+
   // create a client for the call
   useEffect(() => {
     if (call?.id === undefined) return;
@@ -119,11 +131,13 @@ const useConnectCall = ({
     client.on("onPeerUpdate", handlePeerUpdate);
     client.on("onStatusChange", handleStatusChange);
     client.on("onTextMessage", handleTextMessage);
+    client.on("onTimer", handleTimer);
     return () => {
       client.off("onPeerDisconnect", handlePeerDisconnect);
       client.off("onPeerUpdate", handlePeerUpdate);
       client.off("onStatusChange", handleStatusChange);
       client.off("onTextMessage", handleTextMessage);
+      client.off("onTimer", handleTimer);
     };
   }, [client]);
 

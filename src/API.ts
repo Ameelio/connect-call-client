@@ -41,6 +41,7 @@ export type ServerMessages = {
     from: Participant;
     contents: string;
   };
+  timer: { name: "maxDuration"; msRemaining: number };
 };
 
 export type ClientMessages = {
