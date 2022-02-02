@@ -11,13 +11,6 @@ import mitt, { Emitter } from "mitt";
 import { CallStatus, Participant } from "./API";
 import Client from "./Client";
 
-async function getMedia(type: MediaKind, deviceId?: string) {
-  const constraint = deviceId ? { advanced: [{ deviceId }] } : true;
-  return await navigator.mediaDevices.getUserMedia(
-    type === "audio" ? { audio: constraint } : { video: constraint }
-  );
-}
-
 const config: Record<MediaKind, ProducerOptions> = {
   video: {
     encodings: [
@@ -209,10 +202,6 @@ class RoomClient {
     void client.emit("finishConnecting", { callId });
   }
 
-  get role() {
-    return this.producerTransport ? "participant" : "observer";
-  }
-
   on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
     this.emitter.on(name, handler);
   }
@@ -221,25 +210,18 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
-  async produce(type: MediaKind, deviceId?: string): Promise<MediaStream> {
+  async produce(track: MediaStreamTrack): Promise<void> {
+    const type = track.kind as "audio" | "video";
     if (!this.producerTransport)
       throw new Error(`RoomClient is not able to produce media`);
     if (this.producers[type])
       throw new Error(`RoomClient is already producing ${type}`);
-
-    const stream = await getMedia(type, deviceId);
-
-    const track = (
-      type === "audio" ? stream.getAudioTracks() : stream.getVideoTracks()
-    )[0];
 
     const producer = await this.producerTransport.produce({
       ...config[type],
       track,
     });
     this.producers[type] = producer;
-
-    return stream;
   }
 
   async terminate() {

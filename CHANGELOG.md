@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- useConnectCall returns a `produceTrack` function that may be called when status has reached `connected`.
+
+### Removed
+
+- Producing audio and video tracks automatically during connection
+
 ## [0.2.1] - 2022-02-02
 
 ### Added
