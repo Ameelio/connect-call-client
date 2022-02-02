@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Stop sending deprecated `authenticate` event
 
+## [0.2.0] - 2022-01-12
+
+### Added
+
+- Voice calls do not attempt to produce video
+
 ## [0.1.4] - 2022-01-06
 
 ### Fixed
