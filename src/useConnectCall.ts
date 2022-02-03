@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { CallStatus, Participant } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
-export type AudioStream = {
+export type AudioTrack = {
   stream: MediaStream;
   paused: boolean;
 };
 
-export type VideoStream = {
+export type VideoTrack = {
   stream: MediaStream;
   paused: boolean;
   aspectRatio?: number;
@@ -15,17 +15,11 @@ export type VideoStream = {
 
 export type ClientStatus = "initializing" | "errored" | "connected";
 
-export enum CallType {
-  VIDEO_CALL,
-  VOICE_CALL,
-}
-
 type Props = {
   call?: {
     id: string;
     url: string;
     token: string;
-    type: CallType;
   };
   authInfo: Participant & { token: string };
   onPeerConnected?: (user: Participant) => void;
@@ -42,10 +36,11 @@ export type Message = {
 export type ConnectCall = {
   status: ClientStatus | CallStatus;
   error?: Error;
-  localAudio: AudioStream | undefined;
-  localVideo: VideoStream | undefined;
+  localAudio: AudioTrack | undefined;
+  localVideo: VideoTrack | undefined;
   toggleAudio: () => void;
   toggleVideo: () => void;
+  produceTrack: (track: MediaStreamTrack) => Promise<void>;
   peers: Peer[];
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
@@ -63,8 +58,8 @@ const useConnectCall = ({
   onNewMessage,
 }: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
-  const [localAudio, setLocalAudio] = useState<AudioStream>();
-  const [localVideo, setLocalVideo] = useState<VideoStream>();
+  const [localAudio, setLocalAudio] = useState<AudioTrack>();
+  const [localVideo, setLocalVideo] = useState<VideoTrack>();
   const [peers, setPeers] = useState<
     { user: Participant; stream: MediaStream }[]
   >([]);
@@ -132,39 +127,6 @@ const useConnectCall = ({
     };
   }, [client]);
 
-  // produce media
-  useEffect(() => {
-    if (!client || client.role === "observer") return;
-
-    if (call?.type === CallType.VIDEO_CALL) {
-      client
-        .produce("video")
-        .then((stream) => {
-          const trackSettings = stream.getVideoTracks()[0].getSettings();
-          const videoWidth = trackSettings.width;
-          const videoHeight = trackSettings.height;
-          const aspectRatio =
-            videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
-          setLocalVideo({
-            stream,
-            paused: false,
-            aspectRatio,
-          });
-        })
-        .catch(handleError);
-    }
-
-    client
-      .produce("audio")
-      .then((stream) => {
-        setLocalAudio({
-          stream,
-          paused: false,
-        });
-      })
-      .catch(handleError);
-  }, [client, call?.type]);
-
   // announce peer connects
   useEffect(() => {
     if (!client || !onPeerConnected) return;
@@ -206,15 +168,15 @@ const useConnectCall = ({
   );
 
   const toggleAudio = useCallback(async () => {
-    if (!client || localAudio?.paused === undefined)
-      throw new Error("Not connected");
+    if (!client) throw new Error("Not connected");
+    if (localAudio === undefined) throw new Error("Not producing audio");
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
     setLocalAudio((existing) => ({ ...existing!, paused: !localAudio.paused }));
   }, [client, localAudio?.paused, setLocalAudio]);
 
   const toggleVideo = useCallback(async () => {
-    if (!client || localVideo?.paused === undefined)
-      throw new Error("Not connected");
+    if (!client) throw new Error("Not connected");
+    if (localVideo === undefined) throw new Error("Not producing video");
     localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
     setLocalVideo((existing) => ({ ...existing!, paused: !localVideo.paused }));
   }, [client, localVideo?.paused, setLocalVideo]);
@@ -224,6 +186,34 @@ const useConnectCall = ({
     await client.terminate();
   }, [client]);
 
+  const produceTrack = useCallback(
+    async (track: MediaStreamTrack) => {
+      if (!client) throw new Error("Not connected");
+      await client.produce(track);
+      const stream = new MediaStream();
+      stream.addTrack(track);
+      if (track.kind === "audio") {
+        setLocalAudio({
+          stream,
+          paused: false,
+        });
+      }
+      if (track.kind === "video") {
+        const trackSettings = track.getSettings();
+        const videoWidth = trackSettings.width;
+        const videoHeight = trackSettings.height;
+        const aspectRatio =
+          videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
+        setLocalVideo({
+          stream,
+          paused: false,
+          aspectRatio,
+        });
+      }
+    },
+    [client]
+  );
+
   return {
     status,
     error,
@@ -232,6 +222,7 @@ const useConnectCall = ({
     localVideo,
     toggleAudio,
     toggleVideo,
+    produceTrack,
     messages,
     sendMessage,
     terminateCall,

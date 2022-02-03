@@ -4,7 +4,7 @@ import { act as actHook, renderHook } from "@testing-library/react-hooks";
 import { advanceTo } from "jest-date-mock";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
-import useConnectCall, { CallType } from "./useConnectCall";
+import useConnectCall from "./useConnectCall";
 import MediaDevices from "./__mocks__/MediaDevices";
 import MediaStream from "./__mocks__/MediaStream";
 
@@ -28,7 +28,6 @@ const call = {
   id: "2",
   url: "url",
   token: "T1",
-  type: CallType.VIDEO_CALL,
 };
 const authInfo = { id: "1", type: "inmate" as const, token: "T2" };
 
@@ -44,7 +43,7 @@ describe("useConnectCall", () => {
     onNewMessage.mockClear();
   });
 
-  it("connects as a participant", async () => {
+  it("completes the connection handshake", async () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
@@ -58,86 +57,63 @@ describe("useConnectCall", () => {
     expect(result.current.status).toBe("initializing");
 
     await waitFor(() => expect(result.current.status).toBe("connected"));
+  });
+
+  it("produces and toggles audio", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({
+        call,
+        authInfo,
+        onPeerConnected,
+        onPeerDisconnected,
+        onNewMessage,
+      })
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+
+    // produce
+    const track = (
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+    ).getAudioTracks()[0];
+    act;
+    await actHook(() => result.current.produceTrack(track));
     expect(result.current.localAudio).toBeTruthy();
+
+    expect(result.current.localAudio!.paused).toBe(false);
+    await actHook(() => result.current.toggleAudio());
+    expect(result.current.localAudio!.paused).toBe(true);
+    await actHook(() => result.current.toggleAudio());
+    expect(result.current.localAudio!.paused).toBe(false);
+  });
+
+  it("produces and toggles video", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({
+        call,
+        authInfo,
+        onPeerConnected,
+        onPeerDisconnected,
+        onNewMessage,
+      })
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+
+    // produce
+    const track = (
+      await navigator.mediaDevices.getUserMedia({ video: true })
+    ).getVideoTracks()[0];
+    act;
+    await actHook(() => result.current.produceTrack(track));
     expect(result.current.localVideo).toBeTruthy();
-  });
 
-  it("connects as an observer", async () => {
-    client.prepareServerResponse("join", {
-      consumerTransportInfo: {},
-      routerRtpCapabilities: {},
-    });
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call,
-        authInfo,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
-    );
-
-    expect(result.current.status).toBe("initializing");
-
-    await waitFor(() => expect(result.current.status).toBe("connected"));
-    expect(result.current.localAudio).toBeUndefined();
-    expect(result.current.localVideo).toBeUndefined();
-  });
-
-  it("voice calls do not produce video", async () => {
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call: { ...call, type: CallType.VOICE_CALL },
-        authInfo,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
-    );
-
-    await waitFor(() => expect(result.current.status).toBe("connected"));
-    expect(result.current.localAudio).toBeTruthy();
-    expect(result.current.localVideo).toBeUndefined();
-  });
-
-  it("toggles audio on and off", async () => {
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call,
-        authInfo,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
-    );
-
-    await waitFor(() => expect(result.current.status).toBe("connected"));
-
-    expect(result.current.localAudio?.paused).toBe(false);
-    await actHook(() => result.current.toggleAudio());
-    expect(result.current.localAudio?.paused).toBe(true);
-    await actHook(() => result.current.toggleAudio());
-    expect(result.current.localAudio?.paused).toBe(false);
-  });
-
-  it("toggles video on and off", async () => {
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call,
-        authInfo,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
-    );
-
-    await waitFor(() => expect(result.current.status).toBe("connected"));
-
-    expect(result.current.localVideo?.paused).toBe(false);
+    // toggle
+    expect(result.current.localVideo!.paused).toBe(false);
     await actHook(() => result.current.toggleVideo());
-    expect(result.current.localVideo?.paused).toBe(true);
+    expect(result.current.localVideo!.paused).toBe(true);
     await actHook(() => result.current.toggleVideo());
-    expect(result.current.localVideo?.paused).toBe(false);
+    expect(result.current.localVideo!.paused).toBe(false);
   });
 
   it("tracks call status changes", async () => {
