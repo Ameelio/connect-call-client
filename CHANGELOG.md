@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- useConnectCall returns a `produceTrack` function that may be called when status has reached `connected`.
 - useConnectCall accepts an `onTimer` handler for `timer` events containing `maxDuration` data
+
+## [0.3.0] - 2022-02-03
+
+### Added
+
+- useConnectCall returns a `produceTrack` function that may be called when status has reached `connected`.
 
 ### Removed
 
