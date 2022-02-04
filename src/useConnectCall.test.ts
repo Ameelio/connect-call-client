@@ -23,6 +23,7 @@ Object.defineProperty(window, "MediaStream", {
 const onPeerConnected = jest.fn();
 const onPeerDisconnected = jest.fn();
 const onNewMessage = jest.fn();
+const onTimer = jest.fn();
 
 const call = {
   id: "2",
@@ -386,5 +387,24 @@ describe("useConnectCall", () => {
     await waitFor(() => expect(result.current.status).toBe("connected"));
     const res = await actHook(() => result.current.terminateCall());
     expect(res).toBeUndefined();
+  });
+
+  it("handles a timer announcement", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({
+        call,
+        authInfo,
+        onTimer,
+      })
+    );
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+
+    act(() => {
+      client.sendServerEvent("timer", {
+        name: "maxDuration",
+        msRemaining: 60 * 1000,
+      });
+    });
+    expect(onTimer).toHaveBeenCalledTimes(1);
   });
 });

@@ -48,6 +48,7 @@ type Events = {
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
   onTextMessage: { user: Participant; contents: string };
+  onTimer: { name: "maxDuration"; msRemaining: number };
 };
 
 class RoomClient {
@@ -196,6 +197,10 @@ class RoomClient {
 
     client.on("textMessage", ({ from, contents }) => {
       this.emitter.emit("onTextMessage", { user: from, contents });
+    });
+
+    client.on("timer", ({ name, msRemaining }) => {
+      this.emitter.emit("onTimer", { name, msRemaining });
     });
 
     // now that our handlers are prepared, we're reading to begin consuming
