@@ -17,8 +17,8 @@ import { useConnectCall } from 'connect-call-client';
 ## Releasing
 
 1. Review `CHANGELOG.md` and determine the next semantic version
-2. Commit a change to `package.json` and `CHANGELOG.md` with the next version
-3. Push the commit
+2. Commit a change to `package.json` and `CHANGELOG.md` with the next version. Push the commit.
+3. Tag the commit. Push tags.
 4. Run `npm publish` to synchronize with NPM
 5. Reflect on how NPM doesn't have any mechanism to verify your package contents
 6. Marvel at how software works as often as it does
