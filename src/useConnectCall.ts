@@ -98,15 +98,12 @@ const useConnectCall = ({
       },
     ]);
 
-  const handleTimer = ({
-    name,
-    msRemaining,
-  }: {
-    name: "maxDuration";
-    msRemaining: number;
-  }) => {
-    onTimer && onTimer(name, msRemaining);
-  };
+  const handleTimer = useCallback(
+    ({ name, msRemaining }: { name: "maxDuration"; msRemaining: number }) => {
+      onTimer && onTimer(name, msRemaining);
+    },
+    [onTimer]
+  );
 
   // create a client for the call
   useEffect(() => {
@@ -139,7 +136,7 @@ const useConnectCall = ({
       client.off("onTextMessage", handleTextMessage);
       client.off("onTimer", handleTimer);
     };
-  }, [client]);
+  }, [client, handleTimer]);
 
   // announce peer connects
   useEffect(() => {
@@ -183,14 +180,16 @@ const useConnectCall = ({
 
   const toggleAudio = useCallback(async () => {
     if (!client) throw new Error("Not connected");
-    if (localAudio === undefined) throw new Error("Not producing audio");
+    if (localAudio?.paused === undefined)
+      throw new Error("Not producing audio");
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
     setLocalAudio((existing) => ({ ...existing!, paused: !localAudio.paused }));
   }, [client, localAudio?.paused, setLocalAudio]);
 
   const toggleVideo = useCallback(async () => {
     if (!client) throw new Error("Not connected");
-    if (localVideo === undefined) throw new Error("Not producing video");
+    if (localVideo?.paused === undefined)
+      throw new Error("Not producing video");
     localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
     setLocalVideo((existing) => ({ ...existing!, paused: !localVideo.paused }));
   }, [client, localVideo?.paused, setLocalVideo]);
