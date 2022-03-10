@@ -4,7 +4,7 @@ import {
   MediaKind,
   RtpCapabilities,
   RtpParameters,
-  TransportOptions,
+  TransportOptions
 } from "mediasoup-client/lib/types";
 
 export enum ParticipantEventDetail {
@@ -48,7 +48,7 @@ export type ServerMessages = {
     from: Participant;
     contents: string;
   };
-  timer: { name: "maxDuration"; msRemaining: number };
+  timer: { name: "maxDuration"; msRemaining: number, msElapsed: number };
 };
 
 export type ClientMessages = {
