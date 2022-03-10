@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2022-03-10
+
 ### Added
 
 - added `detail` field to `Participant`, passed in event payloads, `user_disconnected`, `connection_closed`, `connection_error`, or undefined
