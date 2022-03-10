@@ -170,7 +170,7 @@ const useConnectCall = ({
         ...existing,
         {
           contents,
-          user: { id: authInfo.id, type: authInfo.type },
+          user: { id: authInfo.id, type: authInfo.type, detail: undefined },
           timestamp: new Date(),
         },
       ]);

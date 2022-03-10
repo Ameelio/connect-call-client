@@ -7,9 +7,16 @@ import {
   TransportOptions,
 } from "mediasoup-client/lib/types";
 
+export enum ParticipantEventDetail {
+  UserDisconnected = "user_disconnected",
+  ConnectionClosed = "connection_closed",
+  ConnectionError = "connection_error",
+}
+
 export type Participant = {
   type: "inmate" | "doc" | "user";
   id: string;
+  detail: ParticipantEventDetail | undefined;
 };
 
 export type CallStatus =
