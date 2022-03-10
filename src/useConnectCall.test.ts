@@ -30,7 +30,12 @@ const call = {
   url: "url",
   token: "T1",
 };
-const authInfo = { id: "1", type: "inmate" as const, token: "T2" };
+const authInfo = {
+  id: "1",
+  type: "inmate" as const,
+  token: "T2",
+  detail: undefined,
+};
 
 advanceTo(new Date("2021-11-23T12:34:56.789Z"));
 
@@ -136,7 +141,7 @@ describe("useConnectCall", () => {
   });
 
   it("tracks peer media", async () => {
-    const user = { id: "USER-01", type: "user" as const };
+    const user = { id: "USER-01", type: "user" as const, detail: undefined };
 
     const { result } = renderHook(() =>
       useConnectCall({
@@ -167,6 +172,7 @@ describe("useConnectCall", () => {
             ],
           },
           "user": Object {
+            "detail": undefined,
             "id": "USER-01",
             "type": "user",
           },
@@ -194,6 +200,7 @@ describe("useConnectCall", () => {
             ],
           },
           "user": Object {
+            "detail": undefined,
             "id": "USER-01",
             "type": "user",
           },
@@ -222,6 +229,7 @@ describe("useConnectCall", () => {
             ],
           },
           "user": Object {
+            "detail": undefined,
             "id": "USER-01",
             "type": "user",
           },
@@ -235,7 +243,7 @@ describe("useConnectCall", () => {
   });
 
   it("alerts when peers connect and disconnect", async () => {
-    const user = { id: "USER-01", type: "user" as const };
+    const user = { id: "USER-01", type: "user" as const, detail: undefined };
 
     const { result } = renderHook(() =>
       useConnectCall({
@@ -265,7 +273,7 @@ describe("useConnectCall", () => {
   });
 
   it("handles peers disconnecting without producing", async () => {
-    const user = { id: "USER-01", type: "user" as const };
+    const user = { id: "USER-01", type: "user" as const, detail: undefined };
 
     const { result } = renderHook(() =>
       useConnectCall({
@@ -297,7 +305,7 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", type: "user" },
+        from: { id: "2", type: "user", detail: undefined },
         contents: "first",
       });
     });
@@ -309,6 +317,7 @@ describe("useConnectCall", () => {
           "contents": "first",
           "timestamp": 2021-11-23T12:34:56.789Z,
           "user": Object {
+            "detail": undefined,
             "id": "2",
             "type": "user",
           },
@@ -336,6 +345,7 @@ describe("useConnectCall", () => {
           "contents": "Hello",
           "timestamp": 2021-11-23T12:34:56.789Z,
           "user": Object {
+            "detail": undefined,
             "id": "1",
             "type": "inmate",
           },
@@ -358,13 +368,13 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", type: "user" },
+        from: { id: "2", type: "user", detail: undefined },
         contents: "first",
       });
     });
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", type: "user" },
+        from: { id: "2", type: "user", detail: undefined },
         contents: "second",
       });
     });
