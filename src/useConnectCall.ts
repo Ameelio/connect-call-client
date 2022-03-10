@@ -24,7 +24,7 @@ type Props = {
   authInfo: Participant & { token: string };
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
-  onTimer?: (name: "maxDuration", msRemaining: number) => void;
+  onTimer?: (name: "maxDuration", msRemaining: number, msElapsed: number) => void;
   onNewMessage?: (message: Message) => void;
 };
 
@@ -99,8 +99,8 @@ const useConnectCall = ({
     ]);
 
   const handleTimer = useCallback(
-    ({ name, msRemaining }: { name: "maxDuration"; msRemaining: number }) => {
-      onTimer && onTimer(name, msRemaining);
+    ({ name, msRemaining, msElapsed }: { name: "maxDuration"; msRemaining: number, msElapsed: number }) => {
+      onTimer && onTimer(name, msRemaining, msElapsed);
     },
     [onTimer]
   );

@@ -413,6 +413,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("timer", {
         name: "maxDuration",
         msRemaining: 60 * 1000,
+        msElapsed: 60 * 1000,
       });
     });
     expect(onTimer).toHaveBeenCalledTimes(1);
