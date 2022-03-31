@@ -10,6 +10,7 @@ import {
 import mitt, { Emitter } from "mitt";
 import { CallStatus, Participant } from "./API";
 import Client from "./Client";
+import { QualityEvents } from "./ConnectionMonitor";
 
 const config: Record<MediaKind, ProducerOptions> = {
   video: {
@@ -48,7 +49,8 @@ type Events = {
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
   onTextMessage: { user: Participant; contents: string };
-  onTimer: { name: "maxDuration"; msRemaining: number, msElapsed: number };
+  onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
+  onConnectionQuality: QualityEvents["quality"];
 };
 
 class RoomClient {
@@ -133,6 +135,11 @@ class RoomClient {
     private consumerTransport: Transport
   ) {
     this.emitter = mitt();
+    client.connectionMonitor.start();
+    client.connectionMonitor.emitter.on("quality", (qualityReport) => {
+      console.log(qualityReport);
+      this.emitter.emit("onConnectionQuality", qualityReport);
+    });
 
     // integrate produce event with the server
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
@@ -264,6 +271,8 @@ class RoomClient {
     this.producers.audio?.close();
     this.producers.video?.close();
     this.emitter.all.clear();
+    this.client.connectionMonitor.emitter.all.clear();
+    this.client.connectionMonitor.stop();
     Object.values(this.peers).forEach((peer) => {
       peer.consumers.audio?.close();
       peer.consumers.video?.close();
