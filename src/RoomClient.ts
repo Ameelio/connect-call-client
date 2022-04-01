@@ -16,7 +16,8 @@ const config: Record<MediaKind, ProducerOptions> = {
     encodings: [
       {
         rid: "r0",
-        maxBitrate: 100000,
+        maxBitrate: 50000,
+        maxFramerate: 10,
         scalabilityMode: "S1T3",
       },
       {
@@ -48,7 +49,7 @@ type Events = {
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
   onTextMessage: { user: Participant; contents: string };
-  onTimer: { name: "maxDuration"; msRemaining: number, msElapsed: number };
+  onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
 };
 
 class RoomClient {
