@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { CallStatus, Participant } from "./API";
-import RoomClient, { Peer } from "./RoomClient";
+import RoomClient, { ConnectionState, Peer } from "./RoomClient";
 
 export type AudioTrack = {
   stream: MediaStream;
@@ -24,8 +24,13 @@ type Props = {
   authInfo: Participant & { token: string };
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
-  onTimer?: (name: "maxDuration", msRemaining: number, msElapsed: number) => void;
+  onTimer?: (
+    name: "maxDuration",
+    msRemaining: number,
+    msElapsed: number
+  ) => void;
   onNewMessage?: (message: Message) => void;
+  onConnectionState?: (connectionState: ConnectionState) => void;
 };
 
 export type Message = {
@@ -58,6 +63,7 @@ const useConnectCall = ({
   onPeerDisconnected,
   onTimer,
   onNewMessage,
+  onConnectionState,
 }: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioTrack>();
@@ -99,11 +105,23 @@ const useConnectCall = ({
     ]);
 
   const handleTimer = useCallback(
-    ({ name, msRemaining, msElapsed }: { name: "maxDuration"; msRemaining: number, msElapsed: number }) => {
+    ({
+      name,
+      msRemaining,
+      msElapsed,
+    }: {
+      name: "maxDuration";
+      msRemaining: number;
+      msElapsed: number;
+    }) => {
       onTimer && onTimer(name, msRemaining, msElapsed);
     },
     [onTimer]
   );
+
+  const handleConnectionState = (connectionState: ConnectionState) => {
+    onConnectionState && onConnectionState(connectionState);
+  };
 
   // create a client for the call
   useEffect(() => {
@@ -129,6 +147,7 @@ const useConnectCall = ({
     client.on("onStatusChange", handleStatusChange);
     client.on("onTextMessage", handleTextMessage);
     client.on("onTimer", handleTimer);
+    client.on("onConnectionState", handleConnectionState);
     return () => {
       client.off("onPeerDisconnect", handlePeerDisconnect);
       client.off("onPeerUpdate", handlePeerUpdate);

@@ -9,19 +9,22 @@ const Qualities = [
   "bad",
   "unknown",
 ] as const;
-type Quality = typeof Qualities[number];
+export type Quality = typeof Qualities[number];
 
 export type QualityEvents = {
   quality: { quality: Quality; ping: number };
 };
 
 interface Result {
-  checkTime: Date;
+  checkTime: number;
   ms: number;
 }
 
 const RESULTS_TTL_MS = 5000;
+const PING_EVENT = "ccc-ping";
+const PONG_EVENT = "ccc-pong";
 
+// QualityRange defines the ranges by which we establish the Quality in milliseconds
 const QualityRange: Record<Quality, number> = {
   [Qualities[0]]: 50,
   [Qualities[1]]: 150,
@@ -38,9 +41,12 @@ export default class ConnectionMonitor {
   private socket: Socket;
   private timer: NodeJS.Timeout | undefined;
   private interval: number;
-  public emitter: Emitter<QualityEvents>;
   private results: Result[] = [];
-  private quality: Quality = "unknown";
+  private _currentQuality: QualityEvents["quality"] = {
+    quality: "unknown",
+    ping: NaN,
+  };
+  public emitter: Emitter<QualityEvents>;
 
   /**
    *
@@ -56,24 +62,37 @@ export default class ConnectionMonitor {
     });
   }
 
-  private update() {
-    const t1 = new Date();
-    this.socket.emit("ping", (response: string | { error: string }) => {
-      if (response !== "pong") {
-        // do something!
-      }
-      console.log(response);
-      const ms = new Date().getTime() - t1.getTime();
-      console.log(ms);
-      this.results.push({ checkTime: t1, ms: ms });
-      this.analyze();
-    });
+  /**
+   * returns the current quality of the connection
+   */
+  public get quality(): QualityEvents["quality"] {
+    return this._currentQuality;
   }
+
+  private update() {
+    this.socket.emit(PING_EVENT, new Date().getTime().toString());
+  }
+
+  private handleResponse = (response: string) => {
+    const startTime = parseInt(response);
+    if (isNaN(startTime)) {
+      // TODO: log a warning?
+      return;
+    }
+    this.results.push({
+      checkTime: startTime,
+      ms: new Date().getTime() - startTime,
+    });
+    this.analyze();
+  };
 
   private analyze() {
     // remove results that have expired
     const limit = new Date().getTime() - RESULTS_TTL_MS;
-    this.results = this.results.filter((r) => r.checkTime.getTime() > limit);
+    this.results = this.results.filter((r) => r.checkTime > limit);
+    if (this.results.length < 1) {
+      return;
+    }
     // take the average
     const average =
       this.results.map((r) => r.ms).reduce((a, b) => a + b) /
@@ -83,11 +102,13 @@ export default class ConnectionMonitor {
     for (const quality of Qualities) {
       if (average <= QualityRange[quality]) {
         newQuality = quality;
+        break;
       }
     }
-    if (this.quality !== newQuality) {
-      this.emitter.emit("quality", { quality: newQuality, ping: average });
-      this.quality = newQuality;
+    if (this._currentQuality.quality !== newQuality) {
+      const q = { quality: newQuality, ping: average };
+      this.emitter.emit("quality", q);
+      this._currentQuality = q;
     }
   }
 
@@ -96,6 +117,7 @@ export default class ConnectionMonitor {
    */
   start() {
     if (!this.timer) {
+      this.socket.on(PONG_EVENT, this.handleResponse);
       this.timer = setInterval(() => {
         this.update();
       }, this.interval);
@@ -107,6 +129,7 @@ export default class ConnectionMonitor {
    */
   stop() {
     if (this.timer) {
+      this.socket.off(PONG_EVENT, this.handleResponse);
       clearInterval(this.timer);
       this.timer = undefined;
     }

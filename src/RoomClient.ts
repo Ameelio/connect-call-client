@@ -10,7 +10,7 @@ import {
 import mitt, { Emitter } from "mitt";
 import { CallStatus, Participant } from "./API";
 import Client from "./Client";
-import { QualityEvents } from "./ConnectionMonitor";
+import { Quality } from "./ConnectionMonitor";
 
 const config: Record<MediaKind, ProducerOptions> = {
   video: {
@@ -43,6 +43,12 @@ export type Peer = {
   stream: MediaStream;
 };
 
+export interface ConnectionState {
+  quality: Quality;
+  ping: number;
+  // TODO: possibly expand this to include more details like bandwidth, latency, overall health, reconnect history
+}
+
 type Events = {
   onStatusChange: CallStatus;
   onPeerConnect: Participant;
@@ -50,7 +56,7 @@ type Events = {
   onPeerUpdate: Peer;
   onTextMessage: { user: Participant; contents: string };
   onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
-  onConnectionQuality: QualityEvents["quality"];
+  onConnectionState: ConnectionState;
 };
 
 class RoomClient {
@@ -136,9 +142,11 @@ class RoomClient {
   ) {
     this.emitter = mitt();
     client.connectionMonitor.start();
-    client.connectionMonitor.emitter.on("quality", (qualityReport) => {
-      console.log(qualityReport);
-      this.emitter.emit("onConnectionQuality", qualityReport);
+    client.connectionMonitor.emitter.on("quality", (currentQuality) => {
+      this.emitter.emit("onConnectionState", {
+        quality: currentQuality.quality,
+        ping: currentQuality.ping,
+      });
     });
 
     // integrate produce event with the server
@@ -220,6 +228,14 @@ class RoomClient {
 
   off<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
     this.emitter.off(name, handler);
+  }
+
+  get ConnectionState(): ConnectionState {
+    const currentQuality = this.client.connectionMonitor.quality;
+    return {
+      quality: currentQuality.quality,
+      ping: currentQuality.ping,
+    };
   }
 
   async produce(track: MediaStreamTrack): Promise<void> {
