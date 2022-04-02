@@ -17,7 +17,8 @@ const config: Record<MediaKind, ProducerOptions> = {
     encodings: [
       {
         rid: "r0",
-        maxBitrate: 100000,
+        maxBitrate: 50000,
+        maxFramerate: 10,
         scalabilityMode: "S1T3",
       },
       {
