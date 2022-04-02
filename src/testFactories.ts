@@ -30,5 +30,16 @@ export function clientFactory() {
       .fn()
       .mockImplementation((name: keyof ClientMessages) => emitResponses[name]),
     close: jest.fn(),
+
+    connectionMonitor: connectionMonitorFactory(),
+  };
+}
+
+export function connectionMonitorFactory() {
+  return {
+    // mock methods
+    emitter: mitt(),
+    start: jest.fn(),
+    stop: jest.fn(),
   };
 }

@@ -129,6 +129,7 @@ export default class ConnectionMonitor {
    */
   stop() {
     if (this.timer) {
+      this.emitter.all.clear();
       this.socket.off(PONG_EVENT, this.handleResponse);
       clearInterval(this.timer);
       this.timer = undefined;

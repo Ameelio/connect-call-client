@@ -119,9 +119,12 @@ const useConnectCall = ({
     [onTimer]
   );
 
-  const handleConnectionState = (connectionState: ConnectionState) => {
-    onConnectionState && onConnectionState(connectionState);
-  };
+  const handleConnectionState = useCallback(
+    (connectionState: ConnectionState) => {
+      onConnectionState && onConnectionState(connectionState);
+    },
+    [onConnectionState]
+  );
 
   // create a client for the call
   useEffect(() => {

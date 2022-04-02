@@ -287,7 +287,6 @@ class RoomClient {
     this.producers.audio?.close();
     this.producers.video?.close();
     this.emitter.all.clear();
-    this.client.connectionMonitor.emitter.all.clear();
     this.client.connectionMonitor.stop();
     Object.values(this.peers).forEach((peer) => {
       peer.consumers.audio?.close();

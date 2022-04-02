@@ -24,6 +24,7 @@ const onPeerConnected = jest.fn();
 const onPeerDisconnected = jest.fn();
 const onNewMessage = jest.fn();
 const onTimer = jest.fn();
+const onConnectionState = jest.fn();
 
 const call = {
   id: "2",
@@ -47,6 +48,7 @@ describe("useConnectCall", () => {
     onPeerConnected.mockClear();
     onPeerDisconnected.mockClear();
     onNewMessage.mockClear();
+    onConnectionState.mockClear();
   });
 
   it("completes the connection handshake", async () => {
@@ -57,6 +59,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
 
@@ -73,6 +76,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
 
@@ -101,6 +105,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
 
@@ -130,6 +135,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
 
@@ -150,6 +156,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
 
@@ -252,6 +259,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
     await waitFor(() => expect(result.current.status).toBe("connected"));
@@ -282,6 +290,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
     await waitFor(() => expect(result.current.status).toBe("connected"));
@@ -299,6 +308,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
     await waitFor(() => expect(result.current.status).toBe("connected"));
@@ -334,6 +344,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
     await waitFor(() => expect(result.current.status).toBe("connected"));
@@ -362,6 +373,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
     await waitFor(() => expect(result.current.status).toBe("connected"));
@@ -390,6 +402,7 @@ describe("useConnectCall", () => {
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
+        onConnectionState,
       })
     );
 
