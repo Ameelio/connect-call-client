@@ -231,7 +231,7 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
-  get ConnectionState(): ConnectionState {
+  get connectionState(): ConnectionState {
     const currentQuality = this.client.connectionMonitor.quality;
     return {
       quality: currentQuality.quality,
