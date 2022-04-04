@@ -1,11 +1,13 @@
 import { io as SocketClient, Socket } from "socket.io-client";
 import { ClientMessages, ServerMessages } from "./API";
+import ConnectionMonitor from "./ConnectionMonitor";
 
 /**
  * Client is a typed wrapper for raw socket events sent to and from the server.
  */
 export default class Client {
   private socket: Socket;
+  public connectionMonitor: ConnectionMonitor;
 
   /**
    * connect is a Client constructor that will wait until it is connected
@@ -18,6 +20,7 @@ export default class Client {
 
   protected constructor(url: string) {
     this.socket = SocketClient(url, { transports: ["websocket"] });
+    this.connectionMonitor = new ConnectionMonitor(this.socket, 500);
   }
 
   on<E extends keyof ServerMessages>(

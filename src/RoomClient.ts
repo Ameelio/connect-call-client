@@ -10,6 +10,7 @@ import {
 import mitt, { Emitter } from "mitt";
 import { CallStatus, Participant } from "./API";
 import Client from "./Client";
+import { Quality } from "./ConnectionMonitor";
 
 const config: Record<MediaKind, ProducerOptions> = {
   video: {
@@ -43,6 +44,12 @@ export type Peer = {
   stream: MediaStream;
 };
 
+export interface ConnectionState {
+  quality: Quality;
+  ping: number;
+  // TODO: possibly expand this to include more details like bandwidth, latency, overall health, reconnect history
+}
+
 type Events = {
   onStatusChange: CallStatus;
   onPeerConnect: Participant;
@@ -50,6 +57,7 @@ type Events = {
   onPeerUpdate: Peer;
   onTextMessage: { user: Participant; contents: string };
   onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
+  onConnectionState: ConnectionState;
 };
 
 class RoomClient {
@@ -134,6 +142,13 @@ class RoomClient {
     private consumerTransport: Transport
   ) {
     this.emitter = mitt();
+    client.connectionMonitor.start();
+    client.connectionMonitor.emitter.on("quality", (currentQuality) => {
+      this.emitter.emit("onConnectionState", {
+        quality: currentQuality.quality,
+        ping: currentQuality.ping,
+      });
+    });
 
     // integrate produce event with the server
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
@@ -216,6 +231,14 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
+  get connectionState(): ConnectionState {
+    const currentQuality = this.client.connectionMonitor.quality;
+    return {
+      quality: currentQuality.quality,
+      ping: currentQuality.ping,
+    };
+  }
+
   async produce(track: MediaStreamTrack): Promise<void> {
     const type = track.kind as "audio" | "video";
     if (!this.producerTransport)
@@ -265,6 +288,7 @@ class RoomClient {
     this.producers.audio?.close();
     this.producers.video?.close();
     this.emitter.all.clear();
+    this.client.connectionMonitor.stop();
     Object.values(this.peers).forEach((peer) => {
       peer.consumers.audio?.close();
       peer.consumers.video?.close();

@@ -4,7 +4,7 @@ import {
   MediaKind,
   RtpCapabilities,
   RtpParameters,
-  TransportOptions
+  TransportOptions,
 } from "mediasoup-client/lib/types";
 
 export enum ParticipantEventDetail {
@@ -13,11 +13,11 @@ export enum ParticipantEventDetail {
   ConnectionError = "connection_error",
 }
 
-export type Participant = {
+export interface Participant {
   type: "inmate" | "doc" | "user";
   id: string;
-  detail: ParticipantEventDetail | undefined;
-};
+  detail?: ParticipantEventDetail;
+}
 
 export type CallStatus =
   | "live"
@@ -48,7 +48,7 @@ export type ServerMessages = {
     from: Participant;
     contents: string;
   };
-  timer: { name: "maxDuration"; msRemaining: number, msElapsed: number };
+  timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
 };
 
 export type ClientMessages = {
