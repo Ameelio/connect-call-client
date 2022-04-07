@@ -21,7 +21,7 @@ type Props = {
     url: string;
     token: string;
   };
-  authInfo: Participant & { token: string };
+  authInfo: Participant;
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
   onTimer?: (
