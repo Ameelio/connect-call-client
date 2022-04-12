@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2022-04-12
+
 ### Added
 
 - useConnectCall returns a disconnect() function that may be called to end the connection without unmounting
