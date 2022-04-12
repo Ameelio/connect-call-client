@@ -431,4 +431,14 @@ describe("useConnectCall", () => {
     });
     expect(onTimer).toHaveBeenCalledTimes(1);
   });
+
+  it("disconnects manually", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({ call, authInfo, onTimer })
+    );
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+
+    await result.current.disconnect();
+    expect(result.current.status).toBe("disconnected");
+  });
 });
