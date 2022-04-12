@@ -13,7 +13,11 @@ export type VideoTrack = {
   aspectRatio?: number;
 };
 
-export type ClientStatus = "initializing" | "errored" | "connected";
+export type ClientStatus =
+  | "initializing"
+  | "errored"
+  | "connected"
+  | "disconnected";
 
 type Props = {
   call?: {
@@ -51,6 +55,7 @@ export type ConnectCall = {
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
   terminateCall: () => Promise<void>;
+  disconnect: () => Promise<void>;
 };
 
 /**
@@ -134,13 +139,17 @@ const useConnectCall = ({
       .catch(handleError);
   }, [call?.id, call?.url, call?.token]);
 
+  const disconnect = useCallback(async () => {
+    if (!client) return;
+    setStatus("disconnected");
+    client.close();
+  }, [client]);
+
   useEffect(() => {
     if (!client) return;
     setStatus("connected");
-    return () => {
-      client.close();
-    };
-  }, [client]);
+    return () => void disconnect();
+  }, [client, disconnect]);
 
   // hook into the client
   useEffect(() => {
@@ -158,7 +167,7 @@ const useConnectCall = ({
       client.off("onTextMessage", handleTextMessage);
       client.off("onTimer", handleTimer);
     };
-  }, [client, handleTimer]);
+  }, [client, handleTimer, handleConnectionState]);
 
   // announce peer connects
   useEffect(() => {
@@ -261,6 +270,7 @@ const useConnectCall = ({
     messages,
     sendMessage,
     terminateCall,
+    disconnect,
   };
 };
 

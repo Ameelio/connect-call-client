@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- useConnectCall returns a disconnect() function that may be called to end the connection without unmounting
+
 ## [0.6.0] - 2022-04-04
+
+### Added
 
 - set simulcast spatial layer 0 to 50kbps/10fps
 - add `ConnectionMonitor` which periodically reports changes in connection state
