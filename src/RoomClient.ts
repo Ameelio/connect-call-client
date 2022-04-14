@@ -58,6 +58,7 @@ type Events = {
   onTextMessage: { user: Participant; contents: string };
   onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   onConnectionState: ConnectionState;
+  onPeerConnectionState: ConnectionState & { user: Participant };
 };
 
 class RoomClient {
