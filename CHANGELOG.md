@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Downgraded react/react-dom to 17.0.1 for compatibility
+
 ## [0.7.0] - 2022-04-12
 
 ### Added
