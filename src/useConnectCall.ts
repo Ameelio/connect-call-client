@@ -35,6 +35,7 @@ type Props = {
   ) => void;
   onNewMessage?: (message: Message) => void;
   onConnectionState?: (connectionState: ConnectionState) => void;
+  onPeerConnectionState?: (connectionState: ConnectionState) => void;
 };
 
 export type Message = {
@@ -69,6 +70,7 @@ const useConnectCall = ({
   onTimer,
   onNewMessage,
   onConnectionState,
+  onPeerConnectionState,
 }: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioTrack>();
@@ -131,10 +133,22 @@ const useConnectCall = ({
     [onConnectionState]
   );
 
+  const handlePeerConnectionState = useCallback(
+    (connectionState: ConnectionState) => {
+      onPeerConnectionState && onPeerConnectionState(connectionState);
+    },
+    [onPeerConnectionState]
+  );
+
   // create a client for the call
   useEffect(() => {
     if (call?.id === undefined) return;
-    RoomClient.connect({ id: call.id, url: call.url, token: call.token })
+    RoomClient.connect({
+      id: call.id,
+      url: call.url,
+      token: call.token,
+      userType: authInfo.type,
+    })
       .then(setClient)
       .catch(handleError);
   }, [call?.id, call?.url, call?.token]);
@@ -160,14 +174,17 @@ const useConnectCall = ({
     client.on("onTextMessage", handleTextMessage);
     client.on("onTimer", handleTimer);
     client.on("onConnectionState", handleConnectionState);
+    client.on("onPeerConnectionState", handlePeerConnectionState);
     return () => {
       client.off("onPeerDisconnect", handlePeerDisconnect);
       client.off("onPeerUpdate", handlePeerUpdate);
       client.off("onStatusChange", handleStatusChange);
       client.off("onTextMessage", handleTextMessage);
       client.off("onTimer", handleTimer);
+      client.off("onConnectionState", handleConnectionState);
+      client.off("onPeerConnectionState", handlePeerConnectionState);
     };
-  }, [client, handleTimer, handleConnectionState]);
+  }, [client, handleTimer, handleConnectionState, handlePeerConnectionState]);
 
   // announce peer connects
   useEffect(() => {

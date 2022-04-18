@@ -6,6 +6,7 @@ import {
   RtpParameters,
   TransportOptions,
 } from "mediasoup-client/lib/types";
+import { ConnectionState } from "./RoomClient";
 
 export enum ParticipantEventDetail {
   UserDisconnected = "user_disconnected",
@@ -94,4 +95,5 @@ export type ClientMessages = {
     { success: true }
   ];
   terminate: [Record<string, never>, { success: true }];
+  connectionState: [ConnectionState, { success: true }];
 };

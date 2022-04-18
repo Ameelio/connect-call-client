@@ -1,6 +1,7 @@
 import { io as SocketClient, Socket } from "socket.io-client";
 import { ClientMessages, ServerMessages } from "./API";
 import ConnectionMonitor from "./ConnectionMonitor";
+import { ConnectionState } from "./RoomClient";
 
 /**
  * Client is a typed wrapper for raw socket events sent to and from the server.
@@ -12,16 +13,29 @@ export default class Client {
   /**
    * connect is a Client constructor that will wait until it is connected
    */
-  static async connect(url: string): Promise<Client> {
-    const client = new this(url);
+  static async connect(
+    url: string,
+    broadcastConnectionState: boolean
+  ): Promise<Client> {
+    const client = new this(url, broadcastConnectionState);
     await client.waitFor("connect");
     return client;
   }
 
-  protected constructor(url: string) {
+  protected constructor(
+    url: string,
+    private broadcastConnectionState?: boolean
+  ) {
     this.socket = SocketClient(url, { transports: ["websocket"] });
     this.connectionMonitor = new ConnectionMonitor(this.socket, 500);
+    if (this.broadcastConnectionState) {
+      this.connectionMonitor.emitter.on("quality", this.emitConnectionState);
+    }
   }
+
+  private emitConnectionState = (currentQuality: ConnectionState) => {
+    this.emit("connectionState", currentQuality);
+  };
 
   on<E extends keyof ServerMessages>(
     name: E,
@@ -38,6 +52,9 @@ export default class Client {
   }
 
   close(): void {
+    if (this.broadcastConnectionState) {
+      this.connectionMonitor.emitter.off("quality", this.emitConnectionState);
+    }
     this.socket.close();
   }
 

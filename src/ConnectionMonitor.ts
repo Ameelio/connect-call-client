@@ -106,7 +106,7 @@ export default class ConnectionMonitor {
       }
     }
     if (this._currentQuality.quality !== newQuality) {
-      const q = { quality: newQuality, ping: average };
+      const q = { quality: newQuality, ping: Math.round(average) };
       this.emitter.emit("quality", q);
       this._currentQuality = q;
     }
