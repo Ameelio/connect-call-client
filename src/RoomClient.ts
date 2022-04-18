@@ -73,8 +73,11 @@ class RoomClient {
     id: string;
     url: string;
     token: string;
+    userType: Participant["type"];
   }): Promise<RoomClient> {
-    const client = await Client.connect(call.url);
+    const broadcastConnectionState =
+      call.userType === "user" || call.userType === "inmate";
+    const client = await Client.connect(call.url, broadcastConnectionState);
 
     // Request to join the room.
     const {

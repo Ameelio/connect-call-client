@@ -13,8 +13,11 @@ export default class Client {
   /**
    * connect is a Client constructor that will wait until it is connected
    */
-  static async connect(url: string): Promise<Client> {
-    const client = new this(url);
+  static async connect(
+    url: string,
+    broadcastConnectionState: boolean
+  ): Promise<Client> {
+    const client = new this(url, broadcastConnectionState);
     await client.waitFor("connect");
     return client;
   }
@@ -30,9 +33,9 @@ export default class Client {
     }
   }
 
-  private emitConnectionState(currentQuality: ConnectionState) {
+  private emitConnectionState = (currentQuality: ConnectionState) => {
     this.emit("connectionState", currentQuality);
-  }
+  };
 
   on<E extends keyof ServerMessages>(
     name: E,

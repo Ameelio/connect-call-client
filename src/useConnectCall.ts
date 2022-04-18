@@ -135,15 +135,20 @@ const useConnectCall = ({
 
   const handlePeerConnectionState = useCallback(
     (connectionState: ConnectionState) => {
-      onConnectionState && onConnectionState(connectionState);
+      onPeerConnectionState && onPeerConnectionState(connectionState);
     },
-    [onConnectionState]
+    [onPeerConnectionState]
   );
 
   // create a client for the call
   useEffect(() => {
     if (call?.id === undefined) return;
-    RoomClient.connect({ id: call.id, url: call.url, token: call.token })
+    RoomClient.connect({
+      id: call.id,
+      url: call.url,
+      token: call.token,
+      userType: authInfo.type,
+    })
       .then(setClient)
       .catch(handleError);
   }, [call?.id, call?.url, call?.token]);
