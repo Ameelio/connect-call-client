@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Turns off video when connection quality is bad, includes event detail with connection state updates
+- Including detail events with state change updates
 - Broadcasting connection state changes to allow all participants to know about connectivity problems
 
 ## [0.7.1] - 2022-04-13

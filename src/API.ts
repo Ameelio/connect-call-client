@@ -50,6 +50,7 @@ export type ServerMessages = {
     contents: string;
   };
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
+  peerConnectionState: { from: Participant } & ConnectionState;
 };
 
 export type ClientMessages = {

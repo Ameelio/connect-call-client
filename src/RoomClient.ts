@@ -44,10 +44,20 @@ export type Peer = {
   stream: MediaStream;
 };
 
+export interface VideoState {
+  enabled: boolean;
+}
+
+interface ConnectionStateEvent {
+  code: "paused_video_poor_connection";
+  timestamp: string; // new Date().toJSON()
+}
+
 export interface ConnectionState {
   quality: Quality;
   ping: number;
-  // TODO: possibly expand this to include more details like bandwidth, latency, overall health, reconnect history
+  events: ConnectionStateEvent[];
+  // TODO: possibly expand this to include more details like bandwidth, overall health, reconnect history
 }
 
 type Events = {
@@ -68,6 +78,11 @@ class RoomClient {
     Peer & { consumers: Partial<Record<MediaKind, Consumer>> }
   > = {};
   private emitter: Emitter<Events>;
+  private _connectionState: ConnectionState = {
+    quality: "unknown",
+    ping: NaN,
+    events: [],
+  };
 
   static async connect(call: {
     id: string;
@@ -75,9 +90,7 @@ class RoomClient {
     token: string;
     userType: Participant["type"];
   }): Promise<RoomClient> {
-    const broadcastConnectionState =
-      call.userType === "user" || call.userType === "inmate";
-    const client = await Client.connect(call.url, broadcastConnectionState);
+    const client = await Client.connect(call.url);
 
     // Request to join the room.
     const {
@@ -131,11 +144,15 @@ class RoomClient {
       rtpCapabilities: device.rtpCapabilities,
     });
 
+    const broadcastConnectionState =
+      call.userType === "user" || call.userType === "inmate";
+
     return new RoomClient(
       call.id,
       client,
       producerTransport,
-      consumerTransport
+      consumerTransport,
+      broadcastConnectionState
     );
   }
 
@@ -143,15 +160,31 @@ class RoomClient {
     private callId: string,
     private client: Client,
     private producerTransport: Transport | null,
-    private consumerTransport: Transport
+    private consumerTransport: Transport,
+    private broadcastConnectionState: boolean
   ) {
     this.emitter = mitt();
     client.connectionMonitor.start();
-    client.connectionMonitor.emitter.on("quality", (currentQuality) => {
-      this.emitter.emit("onConnectionState", {
-        quality: currentQuality.quality,
-        ping: currentQuality.ping,
-      });
+    client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
+      const events: ConnectionStateEvent[] = [];
+      if (
+        currentQuality.quality === "bad" &&
+        this.connectionState.quality !== "bad"
+      ) {
+        // TODO: pauseVideo should return some indication of success
+        await this.pauseVideo();
+        events.push({
+          code: "paused_video_poor_connection",
+          timestamp: new Date().toJSON(),
+        });
+      }
+      this._connectionState = {
+        ...currentQuality,
+        events: events,
+      };
+      this.emitter.emit("onConnectionState", this._connectionState);
+      if (this.broadcastConnectionState)
+        client.emit("connectionState", this._connectionState);
     });
 
     // integrate produce event with the server
@@ -223,6 +256,15 @@ class RoomClient {
       this.emitter.emit("onTimer", { name, msRemaining, msElapsed });
     });
 
+    client.on("peerConnectionState", ({ from, quality, ping, events }) => {
+      this.emitter.emit("onPeerConnectionState", {
+        user: from,
+        quality,
+        ping,
+        events,
+      });
+    });
+
     // now that our handlers are prepared, we're reading to begin consuming
     void client.emit("finishConnecting", { callId });
   }
@@ -236,11 +278,7 @@ class RoomClient {
   }
 
   get connectionState(): ConnectionState {
-    const currentQuality = this.client.connectionMonitor.quality;
-    return {
-      quality: currentQuality.quality,
-      ping: currentQuality.ping,
-    };
+    return this._connectionState;
   }
 
   async produce(track: MediaStreamTrack): Promise<void> {
