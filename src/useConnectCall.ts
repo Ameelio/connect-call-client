@@ -34,8 +34,6 @@ type Props = {
     msElapsed: number
   ) => void;
   onNewMessage?: (message: Message) => void;
-  onConnectionState?: (connectionState: ConnectionState) => void;
-  onPeerConnectionState?: (connectionState: ConnectionState) => void;
 };
 
 export type Message = {
@@ -49,6 +47,7 @@ export type ConnectCall = {
   error?: Error;
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
+  connectionState: ConnectionState;
   toggleAudio: () => void;
   toggleVideo: () => void;
   produceTrack: (track: MediaStreamTrack) => Promise<void>;
@@ -69,14 +68,20 @@ const useConnectCall = ({
   onPeerDisconnected,
   onTimer,
   onNewMessage,
-  onConnectionState,
-  onPeerConnectionState,
 }: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioTrack>();
   const [localVideo, setLocalVideo] = useState<VideoTrack>();
+  const [connectionState, setConnectionState] = useState<ConnectionState>({
+    quality: "unknown",
+    ping: NaN,
+  });
   const [peers, setPeers] = useState<
-    { user: Participant; stream: MediaStream }[]
+    {
+      user: Participant;
+      stream: MediaStream;
+      connectionState: ConnectionState;
+    }[]
   >([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -91,9 +96,16 @@ const useConnectCall = ({
   const handlePeerDisconnect = (user: Participant) =>
     setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
 
-  const handlePeerUpdate = ({ user, stream }: Peer) => {
+  const handlePeerUpdate = ({ user, stream, connectionState }: Peer) => {
     setPeers((peers) => {
-      return [...peers.filter((p) => p.user.id !== user.id), { user, stream }];
+      return [
+        ...peers.filter((p) => p.user.id !== user.id),
+        {
+          user,
+          stream,
+          connectionState,
+        },
+      ];
     });
   };
 
@@ -128,16 +140,9 @@ const useConnectCall = ({
 
   const handleConnectionState = useCallback(
     (connectionState: ConnectionState) => {
-      onConnectionState && onConnectionState(connectionState);
+      setConnectionState(connectionState);
     },
-    [onConnectionState]
-  );
-
-  const handlePeerConnectionState = useCallback(
-    (connectionState: ConnectionState) => {
-      onPeerConnectionState && onPeerConnectionState(connectionState);
-    },
-    [onPeerConnectionState]
+    [setConnectionState]
   );
 
   // create a client for the call
@@ -174,7 +179,6 @@ const useConnectCall = ({
     client.on("onTextMessage", handleTextMessage);
     client.on("onTimer", handleTimer);
     client.on("onConnectionState", handleConnectionState);
-    client.on("onPeerConnectionState", handlePeerConnectionState);
     return () => {
       client.off("onPeerDisconnect", handlePeerDisconnect);
       client.off("onPeerUpdate", handlePeerUpdate);
@@ -182,9 +186,8 @@ const useConnectCall = ({
       client.off("onTextMessage", handleTextMessage);
       client.off("onTimer", handleTimer);
       client.off("onConnectionState", handleConnectionState);
-      client.off("onPeerConnectionState", handlePeerConnectionState);
     };
-  }, [client, handleTimer, handleConnectionState, handlePeerConnectionState]);
+  }, [client, handleTimer, handleConnectionState]);
 
   // announce peer connects
   useEffect(() => {
@@ -281,6 +284,7 @@ const useConnectCall = ({
     peers,
     localAudio,
     localVideo,
+    connectionState,
     toggleAudio,
     toggleVideo,
     produceTrack,

@@ -8,7 +8,12 @@ import {
   Transport,
 } from "mediasoup-client/lib/types";
 import mitt, { Emitter } from "mitt";
-import { CallStatus, Participant } from "./API";
+import {
+  CallStatus,
+  ClientMessages,
+  Participant,
+  PRODUCER_UPDATE_REASONS,
+} from "./API";
 import Client from "./Client";
 import { Quality } from "./ConnectionMonitor";
 
@@ -42,6 +47,7 @@ const config: Record<MediaKind, ProducerOptions> = {
 export type Peer = {
   user: Participant;
   stream: MediaStream;
+  connectionState: ConnectionState;
 };
 
 export interface VideoState {
@@ -49,14 +55,14 @@ export interface VideoState {
 }
 
 interface ConnectionStateEvent {
-  code: "paused_video_poor_connection";
+  code: PRODUCER_UPDATE_REASONS;
   timestamp: string; // new Date().toJSON()
 }
 
 export interface ConnectionState {
   quality: Quality;
   ping: number;
-  events: ConnectionStateEvent[];
+  events?: ConnectionStateEvent[];
   // TODO: possibly expand this to include more details like bandwidth, overall health, reconnect history
 }
 
@@ -172,9 +178,10 @@ class RoomClient {
         this.connectionState.quality !== "bad"
       ) {
         // TODO: pauseVideo should return some indication of success
-        await this.pauseVideo();
+        const reason: PRODUCER_UPDATE_REASONS = "paused_video_bad_connection";
+        await this.pauseVideo(reason);
         events.push({
-          code: "paused_video_poor_connection",
+          code: reason,
           timestamp: new Date().toJSON(),
         });
       }
@@ -184,7 +191,10 @@ class RoomClient {
       };
       this.emitter.emit("onConnectionState", this._connectionState);
       if (this.broadcastConnectionState)
-        client.emit("connectionState", this._connectionState);
+        client.emit("connectionState", {
+          quality: this._connectionState.quality,
+          ping: this._connectionState.ping,
+        });
     });
 
     // integrate produce event with the server
@@ -211,6 +221,7 @@ class RoomClient {
           user,
           consumers: {},
           stream: new MediaStream(),
+          connectionState: { quality: "unknown", ping: NaN },
         };
         this.emitter.emit("onPeerConnect", user);
       }
@@ -221,16 +232,26 @@ class RoomClient {
     });
 
     // listen for tracks pausing and resuming
-    client.on("producerUpdate", async ({ from, paused, type }) => {
-      const peer = this.peers[from.id];
-      if (!peer) throw new Error(`Unknown peer update ${from.type} ${from.id}`);
-      const track = peer.consumers[type]?.track;
-      if (track) {
-        paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
+    client.on(
+      "producerUpdate",
+      async ({ from, paused, type, timestamp, reason }) => {
+        const peer = this.peers[from.id];
+        if (!peer)
+          throw new Error(`Unknown peer update ${from.type} ${from.id}`);
+        const track = peer.consumers[type]?.track;
+        if (track) {
+          paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
+        }
+        if (reason) {
+          if (!peer.connectionState.events) peer.connectionState.events = [];
+          peer.connectionState.events.push({
+            code: reason,
+            timestamp: timestamp,
+          });
+        }
+        this.emitter.emit("onPeerUpdate", peer);
       }
-
-      this.emitter.emit("onPeerUpdate", peer);
-    });
+    );
 
     // listen for peers disconnecting
     client.on("participantDisconnect", async (user) => {
@@ -256,13 +277,15 @@ class RoomClient {
       this.emitter.emit("onTimer", { name, msRemaining, msElapsed });
     });
 
-    client.on("peerConnectionState", ({ from, quality, ping, events }) => {
-      this.emitter.emit("onPeerConnectionState", {
-        user: from,
-        quality,
-        ping,
-        events,
-      });
+    client.on("peerConnectionState", ({ from, quality, ping }) => {
+      const peer = this.peers[from.id];
+      if (peer) {
+        peer.connectionState.quality = quality;
+        peer.connectionState.ping = ping;
+        // clear events on every state change
+        if (peer.connectionState.events) peer.connectionState.events.length = 0;
+        this.emitter.emit("onPeerUpdate", peer);
+      }
     });
 
     // now that our handlers are prepared, we're reading to begin consuming
@@ -299,9 +322,9 @@ class RoomClient {
     await this.client.emit("terminate", {});
   }
 
-  async pauseVideo() {
+  async pauseVideo(reason?: PRODUCER_UPDATE_REASONS) {
     if (!this.producers.video) return;
-    await this.updateProducer(this.producers.video, true);
+    await this.updateProducer(this.producers.video, true, reason);
   }
 
   async resumeVideo() {
@@ -337,13 +360,18 @@ class RoomClient {
     });
   }
 
-  private async updateProducer(producer: Producer, paused: boolean) {
+  private async updateProducer(
+    producer: Producer,
+    paused: boolean,
+    reason?: ClientMessages["producerUpdate"][0]["reason"]
+  ) {
     paused ? producer.pause() : producer.resume();
     await this.client.emit("producerUpdate", {
       callId: this.callId,
       producerId: producer.id,
       paused,
       type: producer.kind as MediaKind,
+      ...(reason ? { reason: reason } : {}),
     });
   }
 }
