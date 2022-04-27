@@ -24,7 +24,6 @@ const onPeerConnected = jest.fn();
 const onPeerDisconnected = jest.fn();
 const onNewMessage = jest.fn();
 const onTimer = jest.fn();
-const onConnectionState = jest.fn();
 
 const call = {
   id: "2",
@@ -165,6 +164,10 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
         Object {
+          "connectionState": Object {
+            "ping": NaN,
+            "quality": "unknown",
+          },
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -190,6 +193,10 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
         Object {
+          "connectionState": Object {
+            "ping": NaN,
+            "quality": "unknown",
+          },
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -222,6 +229,10 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
         Object {
+          "connectionState": Object {
+            "ping": NaN,
+            "quality": "unknown",
+          },
           "stream": MediaStream {
             "tracks": Array [
               Object {
