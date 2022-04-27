@@ -54,7 +54,7 @@ export interface VideoState {
   enabled: boolean;
 }
 
-interface ConnectionStateEvent {
+export interface ConnectionStateEvent {
   code: PRODUCER_UPDATE_REASONS;
   timestamp: string; // new Date().toJSON()
 }
