@@ -57,7 +57,7 @@ export interface ConnectionStateEvent {
 export interface ConnectionState {
   quality: Quality;
   ping: number;
-  events?: ConnectionStateEvent[];
+  videoDisabled?: boolean;
   // TODO: possibly expand this to include more details like bandwidth, overall health, reconnect history
 }
 
@@ -82,7 +82,7 @@ class RoomClient {
   private connectionState: ConnectionState = {
     quality: "unknown",
     ping: NaN,
-    events: [],
+    videoDisabled: false,
   };
 
   static async connect(call: {
@@ -167,7 +167,7 @@ class RoomClient {
     this.emitter = mitt();
     client.connectionMonitor.start();
     client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
-      const events: ConnectionStateEvent[] = [];
+      let videoDisabled = !!this.connectionState.videoDisabled;
       if (
         currentQuality.quality === "bad" &&
         this.connectionState.quality !== "bad"
@@ -175,17 +175,22 @@ class RoomClient {
         // TODO: pauseVideo should return some indication of success
         const reason: PRODUCER_UPDATE_REASONS = "paused_video_bad_connection";
         await this.pauseVideo(reason);
-        events.push({
-          code: reason,
-          timestamp: new Date().toJSON(),
-        });
+        videoDisabled = true;
+      } else if (
+        (["excellent", "good", "average"] as Quality[]).includes(
+          currentQuality.quality
+        )
+      ) {
+        videoDisabled = false;
       }
       this.connectionState = {
         ...currentQuality,
-        events: events,
+        videoDisabled,
       };
       this.emitter.emit("onConnectionState", this.connectionState);
       if (this.broadcastConnectionState)
+        // we don't emit videoDisabled, but let producerUpdate pass the reason,
+        // and allow peers' CCC to set videoDisabled
         client.emit("connectionState", {
           quality: this.connectionState.quality,
           ping: this.connectionState.ping,
@@ -227,26 +232,20 @@ class RoomClient {
     });
 
     // listen for tracks pausing and resuming
-    client.on(
-      "producerUpdate",
-      async ({ from, paused, type, timestamp, reason }) => {
-        const peer = this.peers[from.id];
-        if (!peer)
-          throw new Error(`Unknown peer update ${from.type} ${from.id}`);
-        const track = peer.consumers[type]?.track;
-        if (track) {
-          paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
-        }
-        if (reason) {
-          if (!peer.connectionState.events) peer.connectionState.events = [];
-          peer.connectionState.events.push({
-            code: reason,
-            timestamp: timestamp,
-          });
-        }
-        this.emitter.emit("onPeerUpdate", peer);
+    client.on("producerUpdate", async ({ from, paused, type, reason }) => {
+      const peer = this.peers[from.id];
+      if (!peer) throw new Error(`Unknown peer update ${from.type} ${from.id}`);
+      const track = peer.consumers[type]?.track;
+      if (track) {
+        paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
       }
-    );
+      if (!paused) {
+        peer.connectionState.videoDisabled = false;
+      } else if (reason === "paused_video_bad_connection") {
+        peer.connectionState.videoDisabled = true;
+      }
+      this.emitter.emit("onPeerUpdate", peer);
+    });
 
     // listen for peers disconnecting
     client.on("participantDisconnect", async (user) => {
@@ -277,8 +276,6 @@ class RoomClient {
       if (peer) {
         peer.connectionState.quality = quality;
         peer.connectionState.ping = ping;
-        // clear events on every state change
-        if (peer.connectionState.events) peer.connectionState.events.length = 0;
         this.emitter.emit("onPeerUpdate", peer);
       }
     });
