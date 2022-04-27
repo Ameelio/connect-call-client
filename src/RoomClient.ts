@@ -8,12 +8,7 @@ import {
   Transport,
 } from "mediasoup-client/lib/types";
 import mitt, { Emitter } from "mitt";
-import {
-  CallStatus,
-  ClientMessages,
-  Participant,
-  PRODUCER_UPDATE_REASONS,
-} from "./API";
+import { CallStatus, Participant, PRODUCER_UPDATE_REASONS } from "./API";
 import Client from "./Client";
 import { Quality } from "./ConnectionMonitor";
 
@@ -84,7 +79,7 @@ class RoomClient {
     Peer & { consumers: Partial<Record<MediaKind, Consumer>> }
   > = {};
   private emitter: Emitter<Events>;
-  private _connectionState: ConnectionState = {
+  private connectionState: ConnectionState = {
     quality: "unknown",
     ping: NaN,
     events: [],
@@ -185,15 +180,15 @@ class RoomClient {
           timestamp: new Date().toJSON(),
         });
       }
-      this._connectionState = {
+      this.connectionState = {
         ...currentQuality,
         events: events,
       };
-      this.emitter.emit("onConnectionState", this._connectionState);
+      this.emitter.emit("onConnectionState", this.connectionState);
       if (this.broadcastConnectionState)
         client.emit("connectionState", {
-          quality: this._connectionState.quality,
-          ping: this._connectionState.ping,
+          quality: this.connectionState.quality,
+          ping: this.connectionState.ping,
         });
     });
 
@@ -300,10 +295,6 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
-  get connectionState(): ConnectionState {
-    return this._connectionState;
-  }
-
   async produce(track: MediaStreamTrack): Promise<void> {
     const type = track.kind as "audio" | "video";
     if (!this.producerTransport)
@@ -363,7 +354,7 @@ class RoomClient {
   private async updateProducer(
     producer: Producer,
     paused: boolean,
-    reason?: ClientMessages["producerUpdate"][0]["reason"]
+    reason?: PRODUCER_UPDATE_REASONS
   ) {
     paused ? producer.pause() : producer.resume();
     await this.client.emit("producerUpdate", {
