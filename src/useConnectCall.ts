@@ -141,8 +141,14 @@ const useConnectCall = ({
   const handleConnectionState = useCallback(
     (connectionState: ConnectionState) => {
       setConnectionState(connectionState);
+      if (localVideo && connectionState.videoDisabled && !localVideo.paused) {
+        setLocalVideo({
+          ...localVideo,
+          paused: true,
+        });
+      }
     },
-    [setConnectionState]
+    [setConnectionState, localVideo]
   );
 
   // create a client for the call
