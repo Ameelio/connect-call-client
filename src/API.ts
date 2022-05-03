@@ -32,6 +32,9 @@ export type WebRtcInfo = Pick<
   "id" | "iceParameters" | "iceCandidates" | "dtlsParameters"
 >;
 
+const producerUpdateReasons = ["paused_video_bad_connection"] as const;
+export type PRODUCER_UPDATE_REASONS = typeof producerUpdateReasons[number];
+
 export type ServerMessages = {
   callStatus: CallStatus;
   consume: Required<Omit<ConsumerOptions, "appData">> & {
@@ -44,12 +47,15 @@ export type ServerMessages = {
     from: Participant;
     paused: boolean;
     type: MediaKind;
+    timestamp: string;
+    reason?: PRODUCER_UPDATE_REASONS;
   };
   textMessage: {
     from: Participant;
     contents: string;
   };
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
+  peerConnectionState: { from: Participant } & ConnectionState;
 };
 
 export type ClientMessages = {
@@ -84,6 +90,7 @@ export type ClientMessages = {
       paused: boolean;
       producerId: string;
       type: MediaKind;
+      reason?: PRODUCER_UPDATE_REASONS;
     },
     { success: true }
   ];

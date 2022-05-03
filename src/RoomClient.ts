@@ -8,7 +8,7 @@ import {
   Transport,
 } from "mediasoup-client/lib/types";
 import mitt, { Emitter } from "mitt";
-import { CallStatus, Participant } from "./API";
+import { CallStatus, Participant, PRODUCER_UPDATE_REASONS } from "./API";
 import Client from "./Client";
 import { Quality } from "./ConnectionMonitor";
 
@@ -42,12 +42,23 @@ const config: Record<MediaKind, ProducerOptions> = {
 export type Peer = {
   user: Participant;
   stream: MediaStream;
+  connectionState: ConnectionState;
 };
+
+export interface VideoState {
+  enabled: boolean;
+}
+
+export interface ConnectionStateEvent {
+  code: PRODUCER_UPDATE_REASONS;
+  timestamp: string; // new Date().toJSON()
+}
 
 export interface ConnectionState {
   quality: Quality;
   ping: number;
-  // TODO: possibly expand this to include more details like bandwidth, latency, overall health, reconnect history
+  videoDisabled?: boolean;
+  // TODO: possibly expand this to include more details like bandwidth, overall health, reconnect history
 }
 
 type Events = {
@@ -68,6 +79,11 @@ class RoomClient {
     Peer & { consumers: Partial<Record<MediaKind, Consumer>> }
   > = {};
   private emitter: Emitter<Events>;
+  private connectionState: ConnectionState = {
+    quality: "unknown",
+    ping: NaN,
+    videoDisabled: false,
+  };
 
   static async connect(call: {
     id: string;
@@ -75,9 +91,7 @@ class RoomClient {
     token: string;
     userType: Participant["type"];
   }): Promise<RoomClient> {
-    const broadcastConnectionState =
-      call.userType === "user" || call.userType === "inmate";
-    const client = await Client.connect(call.url, broadcastConnectionState);
+    const client = await Client.connect(call.url);
 
     // Request to join the room.
     const {
@@ -131,11 +145,15 @@ class RoomClient {
       rtpCapabilities: device.rtpCapabilities,
     });
 
+    const broadcastConnectionState =
+      call.userType === "user" || call.userType === "inmate";
+
     return new RoomClient(
       call.id,
       client,
       producerTransport,
-      consumerTransport
+      consumerTransport,
+      broadcastConnectionState
     );
   }
 
@@ -143,15 +161,40 @@ class RoomClient {
     private callId: string,
     private client: Client,
     private producerTransport: Transport | null,
-    private consumerTransport: Transport
+    private consumerTransport: Transport,
+    private broadcastConnectionState: boolean
   ) {
     this.emitter = mitt();
     client.connectionMonitor.start();
-    client.connectionMonitor.emitter.on("quality", (currentQuality) => {
-      this.emitter.emit("onConnectionState", {
-        quality: currentQuality.quality,
-        ping: currentQuality.ping,
-      });
+    client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
+      let videoDisabled = !!this.connectionState.videoDisabled;
+      if (
+        currentQuality.quality === "bad" &&
+        this.connectionState.quality !== "bad"
+      ) {
+        // TODO: pauseVideo should return some indication of success
+        const reason: PRODUCER_UPDATE_REASONS = "paused_video_bad_connection";
+        await this.pauseVideo(reason);
+        videoDisabled = true;
+      } else if (
+        (["excellent", "good", "average"] as Quality[]).includes(
+          currentQuality.quality
+        )
+      ) {
+        videoDisabled = false;
+      }
+      this.connectionState = {
+        ...currentQuality,
+        videoDisabled,
+      };
+      this.emitter.emit("onConnectionState", this.connectionState);
+      if (this.broadcastConnectionState)
+        // we don't emit videoDisabled, but let producerUpdate pass the reason,
+        // and allow peers' CCC to set videoDisabled
+        client.emit("connectionState", {
+          quality: this.connectionState.quality,
+          ping: this.connectionState.ping,
+        });
     });
 
     // integrate produce event with the server
@@ -178,6 +221,7 @@ class RoomClient {
           user,
           consumers: {},
           stream: new MediaStream(),
+          connectionState: { quality: "unknown", ping: NaN },
         };
         this.emitter.emit("onPeerConnect", user);
       }
@@ -188,14 +232,18 @@ class RoomClient {
     });
 
     // listen for tracks pausing and resuming
-    client.on("producerUpdate", async ({ from, paused, type }) => {
+    client.on("producerUpdate", async ({ from, paused, type, reason }) => {
       const peer = this.peers[from.id];
       if (!peer) throw new Error(`Unknown peer update ${from.type} ${from.id}`);
       const track = peer.consumers[type]?.track;
       if (track) {
         paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
       }
-
+      if (!paused) {
+        peer.connectionState.videoDisabled = false;
+      } else if (reason === "paused_video_bad_connection") {
+        peer.connectionState.videoDisabled = true;
+      }
       this.emitter.emit("onPeerUpdate", peer);
     });
 
@@ -223,6 +271,15 @@ class RoomClient {
       this.emitter.emit("onTimer", { name, msRemaining, msElapsed });
     });
 
+    client.on("peerConnectionState", ({ from, quality, ping }) => {
+      const peer = this.peers[from.id];
+      if (peer) {
+        peer.connectionState.quality = quality;
+        peer.connectionState.ping = ping;
+        this.emitter.emit("onPeerUpdate", peer);
+      }
+    });
+
     // now that our handlers are prepared, we're reading to begin consuming
     void client.emit("finishConnecting", { callId });
   }
@@ -233,14 +290,6 @@ class RoomClient {
 
   off<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
     this.emitter.off(name, handler);
-  }
-
-  get connectionState(): ConnectionState {
-    const currentQuality = this.client.connectionMonitor.quality;
-    return {
-      quality: currentQuality.quality,
-      ping: currentQuality.ping,
-    };
   }
 
   async produce(track: MediaStreamTrack): Promise<void> {
@@ -261,9 +310,9 @@ class RoomClient {
     await this.client.emit("terminate", {});
   }
 
-  async pauseVideo() {
+  async pauseVideo(reason?: PRODUCER_UPDATE_REASONS) {
     if (!this.producers.video) return;
-    await this.updateProducer(this.producers.video, true);
+    await this.updateProducer(this.producers.video, true, reason);
   }
 
   async resumeVideo() {
@@ -299,13 +348,18 @@ class RoomClient {
     });
   }
 
-  private async updateProducer(producer: Producer, paused: boolean) {
+  private async updateProducer(
+    producer: Producer,
+    paused: boolean,
+    reason?: PRODUCER_UPDATE_REASONS
+  ) {
     paused ? producer.pause() : producer.resume();
     await this.client.emit("producerUpdate", {
       callId: this.callId,
       producerId: producer.id,
       paused,
       type: producer.kind as MediaKind,
+      ...(reason ? { reason: reason } : {}),
     });
   }
 }
