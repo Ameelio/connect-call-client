@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- connection quality monitor is less aggressive, needs at least 5 results to emit events
+
 ## [0.8.0] - 2022-05-02
 
 ### Added

@@ -90,7 +90,8 @@ export default class ConnectionMonitor {
     // remove results that have expired
     const limit = new Date().getTime() - RESULTS_TTL_MS;
     this.results = this.results.filter((r) => r.checkTime > limit);
-    if (this.results.length < 1) {
+    // ensure we have at least a few results to compute a valid average from
+    if (this.results.length < 5) {
       return;
     }
     // take the average
