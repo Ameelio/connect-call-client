@@ -84,6 +84,7 @@ class RoomClient {
     ping: NaN,
     videoDisabled: false,
   };
+  private heartbeat?: NodeJS.Timer;
 
   static async connect(call: {
     id: string;
@@ -277,6 +278,12 @@ class RoomClient {
       }
     });
 
+    if (this.role === "monitor") {
+      this.heartbeat = setInterval(() => {
+        client.emit("heartbeat", {});
+      }, 1000);
+    }
+
     // now that our handlers are prepared, we're reading to begin consuming
     void client.emit("finishConnecting", { callId });
   }
@@ -332,6 +339,7 @@ class RoomClient {
   }
 
   async close() {
+    if (this.heartbeat) clearInterval(this.heartbeat);
     this.client.close();
     this.consumerTransport.close();
     this.producerTransport?.close();

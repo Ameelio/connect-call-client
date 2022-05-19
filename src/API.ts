@@ -81,6 +81,7 @@ export type ClientMessages = {
     { success: true }
   ];
   finishConnecting: [{ callId: string }, { success: true }];
+  heartbeat: [Record<string, never>, Record<string, never>];
   produce: [
     { callId: string; kind: MediaKind; rtpParameters: RtpParameters },
     { producerId: string }
