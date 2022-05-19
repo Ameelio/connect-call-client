@@ -30,9 +30,10 @@ const call = {
   url: "url",
   token: "T1",
 };
-const authInfo = {
+const user = {
   id: "1",
   type: "inmate" as const,
+  role: "participant" as const,
   token: "T2",
   detail: undefined,
 };
@@ -53,7 +54,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -69,7 +70,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -97,7 +98,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -126,7 +127,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -141,12 +142,17 @@ describe("useConnectCall", () => {
   });
 
   it("tracks peer media", async () => {
-    const user = { id: "USER-01", type: "user" as const, detail: undefined };
+    const user = {
+      id: "USER-01",
+      type: "user" as const,
+      role: "participant" as const,
+      detail: undefined,
+    };
 
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -178,6 +184,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
+            "role": "participant",
             "type": "user",
           },
         },
@@ -210,6 +217,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
+            "role": "participant",
             "type": "user",
           },
         },
@@ -243,6 +251,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
+            "role": "participant",
             "type": "user",
           },
         },
@@ -255,12 +264,17 @@ describe("useConnectCall", () => {
   });
 
   it("alerts when peers connect and disconnect", async () => {
-    const user = { id: "USER-01", type: "user" as const, detail: undefined };
+    const user = {
+      id: "USER-01",
+      type: "user" as const,
+      role: "participant" as const,
+      detail: undefined,
+    };
 
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -285,12 +299,17 @@ describe("useConnectCall", () => {
   });
 
   it("handles peers disconnecting without producing", async () => {
-    const user = { id: "USER-01", type: "user" as const, detail: undefined };
+    const user = {
+      id: "USER-01",
+      type: "user" as const,
+      role: "participant" as const,
+      detail: undefined,
+    };
 
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -307,7 +326,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -317,7 +336,7 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", type: "user", detail: undefined },
+        from: { id: "2", role: "participant", detail: undefined },
         contents: "first",
       });
     });
@@ -331,7 +350,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "2",
-            "type": "user",
+            "role": "participant",
           },
         },
       ]
@@ -342,7 +361,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -357,9 +376,8 @@ describe("useConnectCall", () => {
           "contents": "Hello",
           "timestamp": 2021-11-23T12:34:56.789Z,
           "user": Object {
-            "detail": undefined,
             "id": "1",
-            "type": "inmate",
+            "role": undefined,
           },
         },
       ]
@@ -370,7 +388,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -380,13 +398,13 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", type: "user", detail: undefined },
+        from: { id: "2", role: "participant", detail: undefined },
         contents: "first",
       });
     });
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", type: "user", detail: undefined },
+        from: { id: "2", role: "participant", detail: undefined },
         contents: "second",
       });
     });
@@ -398,7 +416,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onPeerConnected,
         onPeerDisconnected,
         onNewMessage,
@@ -415,7 +433,7 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
-        authInfo,
+        user,
         onTimer,
       })
     );
@@ -433,7 +451,7 @@ describe("useConnectCall", () => {
 
   it("disconnects manually", async () => {
     const { result } = renderHook(() =>
-      useConnectCall({ call, authInfo, onTimer })
+      useConnectCall({ call, user, onTimer })
     );
     await waitFor(() => expect(result.current.status).toBe("connected"));
 

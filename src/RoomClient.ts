@@ -89,12 +89,12 @@ class RoomClient {
     id: string;
     url: string;
     token: string;
-    userType: Participant["type"];
   }): Promise<RoomClient> {
     const client = await Client.connect(call.url);
 
     // Request to join the room.
     const {
+      role,
       producerTransportInfo,
       consumerTransportInfo,
       routerRtpCapabilities,
@@ -145,15 +145,12 @@ class RoomClient {
       rtpCapabilities: device.rtpCapabilities,
     });
 
-    const broadcastConnectionState =
-      call.userType === "user" || call.userType === "inmate";
-
     return new RoomClient(
       call.id,
       client,
       producerTransport,
       consumerTransport,
-      broadcastConnectionState
+      role
     );
   }
 
@@ -162,7 +159,7 @@ class RoomClient {
     private client: Client,
     private producerTransport: Transport | null,
     private consumerTransport: Transport,
-    private broadcastConnectionState: boolean
+    public role: Participant["role"]
   ) {
     this.emitter = mitt();
     client.connectionMonitor.start();
@@ -188,7 +185,7 @@ class RoomClient {
         videoDisabled,
       };
       this.emitter.emit("onConnectionState", this.connectionState);
-      if (this.broadcastConnectionState)
+      if (this.role === "monitor")
         // we don't emit videoDisabled, but let producerUpdate pass the reason,
         // and allow peers' CCC to set videoDisabled
         client.emit("connectionState", {
@@ -234,7 +231,7 @@ class RoomClient {
     // listen for tracks pausing and resuming
     client.on("producerUpdate", async ({ from, paused, type, reason }) => {
       const peer = this.peers[from.id];
-      if (!peer) throw new Error(`Unknown peer update ${from.type} ${from.id}`);
+      if (!peer) throw new Error(`Unknown peer update ${from.id}`);
       const track = peer.consumers[type]?.track;
       if (track) {
         paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
