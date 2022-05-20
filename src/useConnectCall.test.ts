@@ -377,7 +377,7 @@ describe("useConnectCall", () => {
           "timestamp": 2021-11-23T12:34:56.789Z,
           "user": Object {
             "id": "1",
-            "role": undefined,
+            "role": "participant",
           },
         },
       ]
@@ -457,5 +457,24 @@ describe("useConnectCall", () => {
 
     await result.current.disconnect();
     expect(result.current.status).toBe("disconnected");
+  });
+
+  it("broadcasts connection state of a participant to peers", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({ call, user, onTimer })
+    );
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+
+    client.connectionMonitor.emitter.emit("quality", {
+      quality: "bad",
+      ping: 999,
+    });
+
+    await waitFor(() =>
+      expect(client.emit).toHaveBeenLastCalledWith("connectionState", {
+        quality: "bad",
+        ping: 999,
+      })
+    );
   });
 });

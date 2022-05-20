@@ -1,5 +1,6 @@
 import mitt from "mitt";
 import { ClientMessages, ServerMessages } from "./API";
+import { QualityEvents } from "./ConnectionMonitor";
 
 type EmitResponses = Partial<Record<keyof ClientMessages, unknown>>;
 
@@ -7,6 +8,7 @@ export function clientFactory() {
   const emitter = mitt();
   const emitResponses: EmitResponses = {
     join: {
+      role: "participant",
       consumerTransportInfo: {},
       producerTransportInfo: {},
       routerRtpCapabilities: {},
@@ -20,7 +22,7 @@ export function clientFactory() {
 
     prepareServerResponse: <E extends keyof ClientMessages>(
       name: E,
-      data: unknown
+      data: ClientMessages[E][1]
     ) => (emitResponses[name] = data),
 
     // mock methods
@@ -38,7 +40,7 @@ export function clientFactory() {
 export function connectionMonitorFactory() {
   return {
     // mock methods
-    emitter: mitt(),
+    emitter: mitt<QualityEvents>(),
     start: jest.fn(),
     stop: jest.fn(),
   };
