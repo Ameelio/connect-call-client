@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `user.id` prop for useConnectCall
 - rely on CVH for role (was: userType) information
+- client-side heartbeat for monitor role
 
 ## [0.8.1] - 2022-05-09
 
