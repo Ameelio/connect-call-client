@@ -25,7 +25,7 @@ type Props = {
     url: string;
     token: string;
   };
-  authInfo: Participant;
+  user: Pick<Participant, "id">;
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
   onTimer?: (
@@ -63,7 +63,7 @@ export type ConnectCall = {
  */
 const useConnectCall = ({
   call,
-  authInfo,
+  user,
   onPeerConnected,
   onPeerDisconnected,
   onTimer,
@@ -158,7 +158,6 @@ const useConnectCall = ({
       id: call.id,
       url: call.url,
       token: call.token,
-      userType: authInfo.type,
     })
       .then(setClient)
       .catch(handleError);
@@ -227,12 +226,15 @@ const useConnectCall = ({
         ...existing,
         {
           contents,
-          user: { id: authInfo.id, type: authInfo.type, detail: undefined },
+          user: {
+            id: user.id,
+            role: client.role,
+          },
           timestamp: new Date(),
         },
       ]);
     },
-    [client, setMessages, authInfo]
+    [client, setMessages, user]
   );
 
   const toggleAudio = useCallback(async () => {

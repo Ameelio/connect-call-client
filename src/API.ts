@@ -15,7 +15,7 @@ export enum ParticipantEventDetail {
 }
 
 export interface Participant {
-  type: "inmate" | "doc" | "user";
+  role: "participant" | "monitor";
   id: string;
   detail?: ParticipantEventDetail;
 }
@@ -62,6 +62,7 @@ export type ClientMessages = {
   join: [
     { callId: string; token: string },
     {
+      role: Participant["role"];
       consumerTransportInfo: WebRtcInfo;
       producerTransportInfo?: WebRtcInfo;
       routerRtpCapabilities: RtpCapabilities;
