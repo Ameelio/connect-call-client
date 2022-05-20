@@ -185,7 +185,7 @@ class RoomClient {
         videoDisabled,
       };
       this.emitter.emit("onConnectionState", this.connectionState);
-      if (this.role === "monitor")
+      if (this.role === "participant")
         // we don't emit videoDisabled, but let producerUpdate pass the reason,
         // and allow peers' CCC to set videoDisabled
         client.emit("connectionState", {
