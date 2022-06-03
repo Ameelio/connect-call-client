@@ -25,7 +25,7 @@
     "socket.io-client": "^3.1.2"
   },
   "peerDependencies": {
-    "react": "^17.0.1"
+    "react": ">= 17.0.1"
   },
   "devDependencies": {
     "@testing-library/react": "^12.1.2",
