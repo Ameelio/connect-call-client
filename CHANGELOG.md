@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2022-06-03
+
 - compatibility with any React version 17.0.1 or greater
 
 ## [0.9.0] - 2022-05-20
