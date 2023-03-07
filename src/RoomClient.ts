@@ -61,6 +61,10 @@ export interface ConnectionState {
   // TODO: possibly expand this to include more details like bandwidth, overall health, reconnect history
 }
 
+export enum UserStatus {
+  WebinarUnmuted = 'WebinarUnmuted';
+};
+
 type Events = {
   onStatusChange: CallStatus;
   onPeerConnect: Participant;
@@ -84,6 +88,7 @@ class RoomClient {
     ping: NaN,
     videoDisabled: false,
   };
+  protected currentUserStatus: UserStatus[];
   private heartbeat?: NodeJS.Timer;
 
   static async connect(call: {
@@ -186,7 +191,7 @@ class RoomClient {
         videoDisabled,
       };
       this.emitter.emit("onConnectionState", this.connectionState);
-      if (this.role === "participant")
+      if (this.role !== "monitor")
         // we don't emit videoDisabled, but let producerUpdate pass the reason,
         // and allow peers' CCC to set videoDisabled
         client.emit("connectionState", {
@@ -265,6 +270,12 @@ class RoomClient {
       this.emitter.emit("onTextMessage", { user: from, contents });
     });
 
+    client.on("statusChange", (status) => {
+      this.emitter.emit("onUserStatusChange", status);
+      this.currentUserStatus = status;
+      this.checkLocalMute();
+    });
+
     client.on("timer", ({ name, msRemaining, msElapsed }) => {
       this.emitter.emit("onTimer", { name, msRemaining, msElapsed });
     });
@@ -311,7 +322,24 @@ class RoomClient {
   }
 
   async terminate() {
-    await this.client.emit("terminate", {});
+    await this.submitOperation({ type: 'terminate' });
+  }
+
+  async checkLocalMute() {
+    if (this.role === 'webinarAttendee') {
+      // If we are now remote muted but not locally muted,
+      // locally mute.
+      if (!this.currentUserStatus.includes('WebinarUnmuted') && this.producers.audio && !this.producers.audio.paused) {
+        this.pauseAudio();
+      }
+    }
+  }
+
+  async submitOperation(operation: Operation) {
+    await this.client.emit('operation', {
+      callId: this.callId,
+      operation
+    });
   }
 
   async pauseVideo(reason?: PRODUCER_UPDATE_REASONS) {
@@ -331,11 +359,13 @@ class RoomClient {
 
   async resumeAudio() {
     if (!this.producers.audio) return;
+    // Do not allow resuming audio when remote muted
+    if (this.role === 'webinarAttendee' && !this.currentUserStatus.includes('WebinarUnmuted')) return;
     await this.updateProducer(this.producers.audio, false);
   }
 
   async sendMessage(contents: string) {
-    await this.client.emit("textMessage", { callId: this.callId, contents });
+    await this.submitOperation({ type: 'textMessage', contents });
   }
 
   async close() {
