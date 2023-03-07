@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CallStatus, Participant } from "./API";
+import { CallStatus, Operation, Participant } from "./API";
 import RoomClient, { ConnectionState, Peer } from "./RoomClient";
 
 export type AudioTrack = {
@@ -45,6 +45,7 @@ export type Message = {
 export type ConnectCall = {
   status: ClientStatus | CallStatus;
   error?: Error;
+  submitOperation: (o: Operation) => Promise<void>;
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
   connectionState: ConnectionState;
@@ -242,15 +243,28 @@ const useConnectCall = ({
     if (localAudio?.paused === undefined)
       throw new Error("Not producing audio");
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
-    setLocalAudio((existing) => ({ ...existing!, paused: !localAudio.paused }));
+    setLocalAudio((existing) =>
+      existing ? { ...existing, paused: !localAudio.paused } : undefined
+    );
   }, [client, localAudio?.paused, setLocalAudio]);
+
+  const submitOperation = useCallback(
+    async (operation: Operation) => {
+      if (!client) throw new Error("Not connected");
+
+      client.submitOperation(operation);
+    },
+    [client]
+  );
 
   const toggleVideo = useCallback(async () => {
     if (!client) throw new Error("Not connected");
     if (localVideo?.paused === undefined)
       throw new Error("Not producing video");
     localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
-    setLocalVideo((existing) => ({ ...existing!, paused: !localVideo.paused }));
+    setLocalVideo((existing) =>
+      existing ? { ...existing, paused: !localVideo.paused } : undefined
+    );
   }, [client, localVideo?.paused, setLocalVideo]);
 
   const terminateCall = useCallback(async () => {
@@ -295,6 +309,7 @@ const useConnectCall = ({
     connectionState,
     toggleAudio,
     toggleVideo,
+    submitOperation,
     produceTrack,
     messages,
     sendMessage,
