@@ -14,8 +14,36 @@ export enum ParticipantEventDetail {
   ConnectionError = "connection_error",
 }
 
+export enum Role {
+  visitParticipant = "visitParticipant",
+  webinarAttendee = "webinarAttendee",
+  webinarHost = "webinarHost",
+  monitor = "monitor",
+}
+
+export enum UserStatus {
+  WebinarUnmuted = "WebinarUnmuted",
+}
+
+export type Operation =
+  | {
+      type: "terminate";
+    }
+  | {
+      type: "textMessage";
+      contents: string;
+    }
+  | {
+      type: "remoteMute";
+      targetUserId: string;
+    }
+  | {
+      type: "remoteUnmute";
+      targetUserId: string;
+    };
+
 export interface Participant {
-  role: "participant" | "monitor";
+  role: Role;
   id: string;
   detail?: ParticipantEventDetail;
 }
@@ -54,6 +82,7 @@ export type ServerMessages = {
     from: Participant;
     contents: string;
   };
+  statusChange: UserStatus[];
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   peerConnectionState: { from: Participant } & ConnectionState;
 };
@@ -68,6 +97,7 @@ export type ClientMessages = {
       routerRtpCapabilities: RtpCapabilities;
     }
   ];
+  operation: [{ callId: string; operation: Operation }, { success: true }];
   declareRtpCapabilities: [
     { rtpCapabilities: RtpCapabilities },
     { success: true }

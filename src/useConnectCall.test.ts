@@ -2,6 +2,7 @@ import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
 import { act as actHook, renderHook } from "@testing-library/react-hooks";
 import { advanceTo } from "jest-date-mock";
+import { Role } from "./API";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
 import useConnectCall from "./useConnectCall";
@@ -33,7 +34,7 @@ const call = {
 const user = {
   id: "1",
   type: "inmate" as const,
-  role: "participant" as const,
+  role: Role.visitParticipant,
   token: "T2",
   detail: undefined,
 };
@@ -145,7 +146,7 @@ describe("useConnectCall", () => {
     const user = {
       id: "USER-01",
       type: "user" as const,
-      role: "participant" as const,
+      role: Role.visitParticipant,
       detail: undefined,
     };
 
@@ -184,7 +185,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": "participant",
+            "role": Role.visitParticipant,
             "type": "user",
           },
         },
@@ -217,7 +218,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": "participant",
+            "role": Role.visitParticipant,
             "type": "user",
           },
         },
@@ -251,7 +252,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": "participant",
+            "role": Role.visitParticipant,
             "type": "user",
           },
         },
@@ -267,7 +268,7 @@ describe("useConnectCall", () => {
     const user = {
       id: "USER-01",
       type: "user" as const,
-      role: "participant" as const,
+      role: Role.visitParticipant,
       detail: undefined,
     };
 
@@ -302,7 +303,7 @@ describe("useConnectCall", () => {
     const user = {
       id: "USER-01",
       type: "user" as const,
-      role: "participant" as const,
+      role: Role.visitParticipant,
       detail: undefined,
     };
 
@@ -336,7 +337,7 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", role: "participant", detail: undefined },
+        from: { id: "2", role: Role.visitParticipant, detail: undefined },
         contents: "first",
       });
     });
@@ -350,7 +351,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "2",
-            "role": "participant",
+            "role": Role.visitParticipant,
           },
         },
       ]
@@ -377,7 +378,7 @@ describe("useConnectCall", () => {
           "timestamp": 2021-11-23T12:34:56.789Z,
           "user": Object {
             "id": "1",
-            "role": "participant",
+            "role": Role.visitParticipant,
           },
         },
       ]
@@ -398,13 +399,13 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", role: "participant", detail: undefined },
+        from: { id: "2", role: Role.visitParticipant, detail: undefined },
         contents: "first",
       });
     });
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", role: "participant", detail: undefined },
+        from: { id: "2", role: Role.visitParticipant, detail: undefined },
         contents: "second",
       });
     });

@@ -8,7 +8,13 @@ import {
   Transport,
 } from "mediasoup-client/lib/types";
 import mitt, { Emitter } from "mitt";
-import { CallStatus, Participant, PRODUCER_UPDATE_REASONS } from "./API";
+import {
+  CallStatus,
+  Operation,
+  Participant,
+  PRODUCER_UPDATE_REASONS,
+  UserStatus,
+} from "./API";
 import Client from "./Client";
 import { Quality } from "./ConnectionMonitor";
 
@@ -61,12 +67,9 @@ export interface ConnectionState {
   // TODO: possibly expand this to include more details like bandwidth, overall health, reconnect history
 }
 
-export enum UserStatus {
-  WebinarUnmuted = 'WebinarUnmuted';
-};
-
 type Events = {
   onStatusChange: CallStatus;
+  onUserStatusChange: UserStatus[];
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
@@ -200,6 +203,8 @@ class RoomClient {
         });
     });
 
+    this.currentUserStatus = [];
+
     // integrate produce event with the server
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
     producerTransport?.on(
@@ -322,23 +327,27 @@ class RoomClient {
   }
 
   async terminate() {
-    await this.submitOperation({ type: 'terminate' });
+    await this.submitOperation({ type: "terminate" });
   }
 
   async checkLocalMute() {
-    if (this.role === 'webinarAttendee') {
+    if (this.role === "webinarAttendee") {
       // If we are now remote muted but not locally muted,
       // locally mute.
-      if (!this.currentUserStatus.includes('WebinarUnmuted') && this.producers.audio && !this.producers.audio.paused) {
+      if (
+        !this.currentUserStatus.includes(UserStatus.WebinarUnmuted) &&
+        this.producers.audio &&
+        !this.producers.audio.paused
+      ) {
         this.pauseAudio();
       }
     }
   }
 
   async submitOperation(operation: Operation) {
-    await this.client.emit('operation', {
+    await this.client.emit("operation", {
       callId: this.callId,
-      operation
+      operation,
     });
   }
 
@@ -360,12 +369,16 @@ class RoomClient {
   async resumeAudio() {
     if (!this.producers.audio) return;
     // Do not allow resuming audio when remote muted
-    if (this.role === 'webinarAttendee' && !this.currentUserStatus.includes('WebinarUnmuted')) return;
+    if (
+      this.role === "webinarAttendee" &&
+      !this.currentUserStatus.includes(UserStatus.WebinarUnmuted)
+    )
+      return;
     await this.updateProducer(this.producers.audio, false);
   }
 
   async sendMessage(contents: string) {
-    await this.submitOperation({ type: 'textMessage', contents });
+    await this.submitOperation({ type: "textMessage", contents });
   }
 
   async close() {
