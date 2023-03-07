@@ -22,7 +22,8 @@ export enum Role {
 }
 
 export enum UserStatus {
-  WebinarUnmuted = "WebinarUnmuted",
+  WebinarAudioUnmuted = "WebinarAudioUnmuted",
+  WebinarVideoMuted = "WebinarVideoMuted",
 }
 
 export type Operation =
@@ -34,11 +35,19 @@ export type Operation =
       contents: string;
     }
   | {
-      type: "remoteMute";
+      type: "remoteAudioMute";
       targetUserId: string;
     }
   | {
-      type: "remoteUnmute";
+      type: "remoteAudioUnmute";
+      targetUserId: string;
+    }
+  | {
+      type: "remoteVideoMute";
+      targetUserId: string;
+    }
+  | {
+      type: "remoteVideoUnmute";
       targetUserId: string;
     };
 

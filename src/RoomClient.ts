@@ -335,11 +335,20 @@ class RoomClient {
       // If we are now remote muted but not locally muted,
       // locally mute.
       if (
-        !this.currentUserStatus.includes(UserStatus.WebinarUnmuted) &&
+        !this.currentUserStatus.includes(UserStatus.WebinarAudioUnmuted) &&
         this.producers.audio &&
         !this.producers.audio.paused
       ) {
         this.pauseAudio();
+      }
+
+      // Same with video mute
+      if (
+        this.currentUserStatus.includes(UserStatus.WebinarVideoMuted) &&
+        this.producers.video &&
+        !this.producers.video.paused
+      ) {
+        this.pauseVideo();
       }
     }
   }
@@ -358,6 +367,12 @@ class RoomClient {
 
   async resumeVideo() {
     if (!this.producers.video) return;
+    // Do not allow resuming video when remote video muted
+    if (
+      this.role === "webinarAttendee" &&
+      !this.currentUserStatus.includes(UserStatus.WebinarVideoMuted)
+    )
+      return;
     await this.updateProducer(this.producers.video, false);
   }
 
