@@ -386,7 +386,7 @@ class RoomClient {
     // Do not allow resuming audio when remote muted
     if (
       this.role === "webinarAttendee" &&
-      !this.currentUserStatus.includes(UserStatus.WebinarUnmuted)
+      !this.currentUserStatus.includes(UserStatus.WebinarAudioUnmuted)
     )
       return;
     await this.updateProducer(this.producers.audio, false);
