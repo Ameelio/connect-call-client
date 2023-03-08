@@ -13,6 +13,7 @@ import {
   Operation,
   Participant,
   PRODUCER_UPDATE_REASONS,
+  Role,
   UserStatus,
 } from "./API";
 import Client from "./Client";
@@ -69,7 +70,7 @@ export interface ConnectionState {
 
 type Events = {
   onStatusChange: CallStatus;
-  onUserStatusChange: UserStatus[];
+  onUserStatus: { userId: string; status: UserStatus[] }[];
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
@@ -83,15 +84,26 @@ class RoomClient {
   private producers: Partial<Record<MediaKind, Producer>> = {};
   private peers: Record<
     string,
-    Peer & { consumers: Partial<Record<MediaKind, Consumer>> }
+    Peer & {
+      consumers: Partial<Record<MediaKind, Consumer>>;
+      status: UserStatus[];
+    }
   > = {};
+  public user: {
+    id: string;
+    role: Role;
+    status: UserStatus[];
+  };
+  private callId: string;
+  private client: Client;
+  private producerTransport: Transport | null;
+  private consumerTransport: Transport;
   private emitter: Emitter<Events>;
   private connectionState: ConnectionState = {
     quality: "unknown",
     ping: NaN,
     videoDisabled: false,
   };
-  protected currentUserStatus: UserStatus[];
   private heartbeat?: NodeJS.Timer;
 
   static async connect(call: {
@@ -104,6 +116,8 @@ class RoomClient {
     // Request to join the room.
     const {
       role,
+      userId,
+      status,
       producerTransportInfo,
       consumerTransportInfo,
       routerRtpCapabilities,
@@ -154,22 +168,45 @@ class RoomClient {
       rtpCapabilities: device.rtpCapabilities,
     });
 
-    return new RoomClient(
-      call.id,
+    return new RoomClient({
+      callId: call.id,
       client,
       producerTransport,
       consumerTransport,
-      role
-    );
+      role,
+      userId,
+      status,
+    });
   }
 
-  protected constructor(
-    private callId: string,
-    private client: Client,
-    private producerTransport: Transport | null,
-    private consumerTransport: Transport,
-    public role: Participant["role"]
-  ) {
+  protected constructor({
+    callId,
+    client,
+    producerTransport,
+    consumerTransport,
+    role,
+    userId,
+    status,
+  }: {
+    callId: string;
+    client: Client;
+    producerTransport: Transport | null;
+    consumerTransport: Transport;
+    role: Participant["role"];
+    userId: string;
+    status: UserStatus[];
+  }) {
+    this.callId = callId;
+    this.client = client;
+    this.producerTransport = producerTransport;
+    this.consumerTransport = consumerTransport;
+
+    this.user = {
+      id: userId,
+      status,
+      role,
+    };
+
     this.emitter = mitt();
     client.connectionMonitor.start();
     client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
@@ -194,7 +231,7 @@ class RoomClient {
         videoDisabled,
       };
       this.emitter.emit("onConnectionState", this.connectionState);
-      if (this.role !== "monitor")
+      if (this.user.role !== "monitor")
         // we don't emit videoDisabled, but let producerUpdate pass the reason,
         // and allow peers' CCC to set videoDisabled
         client.emit("connectionState", {
@@ -202,8 +239,6 @@ class RoomClient {
           ping: this.connectionState.ping,
         });
     });
-
-    this.currentUserStatus = [];
 
     // integrate produce event with the server
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
@@ -229,6 +264,7 @@ class RoomClient {
           user,
           consumers: {},
           stream: new MediaStream(),
+          status: [],
           connectionState: { quality: "unknown", ping: NaN },
         };
         this.emitter.emit("onPeerConnect", user);
@@ -275,10 +311,17 @@ class RoomClient {
       this.emitter.emit("onTextMessage", { user: from, contents });
     });
 
-    client.on("statusChange", (status) => {
-      this.emitter.emit("onUserStatusChange", status);
-      this.currentUserStatus = status;
-      this.checkLocalMute();
+    client.on("userStatus", (statusUpdates) => {
+      this.emitter.emit("onUserStatus", statusUpdates);
+
+      statusUpdates.forEach(({ userId, status }) => {
+        if (userId === this.user.id) {
+          this.user.status = status;
+          this.checkLocalMute();
+        } else if (userId in this.peers) {
+          this.peers.userId.status = status;
+        }
+      });
     });
 
     client.on("timer", ({ name, msRemaining, msElapsed }) => {
@@ -294,7 +337,7 @@ class RoomClient {
       }
     });
 
-    if (this.role === "monitor") {
+    if (this.user.role === "monitor") {
       this.heartbeat = setInterval(() => {
         client.emit("heartbeat", {});
       }, 1000);
@@ -331,11 +374,11 @@ class RoomClient {
   }
 
   async checkLocalMute() {
-    if (this.role === "webinarAttendee") {
+    if (this.user.role === "webinarAttendee") {
       // If we are now remote muted but not locally muted,
       // locally mute.
       if (
-        !this.currentUserStatus.includes(UserStatus.WebinarAudioUnmuted) &&
+        !this.user.status.includes(UserStatus.WebinarAudioUnmuted) &&
         this.producers.audio &&
         !this.producers.audio.paused
       ) {
@@ -344,7 +387,7 @@ class RoomClient {
 
       // Same with video mute
       if (
-        this.currentUserStatus.includes(UserStatus.WebinarVideoMuted) &&
+        this.user.status.includes(UserStatus.WebinarVideoMuted) &&
         this.producers.video &&
         !this.producers.video.paused
       ) {
@@ -369,8 +412,8 @@ class RoomClient {
     if (!this.producers.video) return;
     // Do not allow resuming video when remote video muted
     if (
-      this.role === "webinarAttendee" &&
-      !this.currentUserStatus.includes(UserStatus.WebinarVideoMuted)
+      this.user.role === "webinarAttendee" &&
+      !this.user.status.includes(UserStatus.WebinarVideoMuted)
     )
       return;
     await this.updateProducer(this.producers.video, false);
@@ -385,8 +428,8 @@ class RoomClient {
     if (!this.producers.audio) return;
     // Do not allow resuming audio when remote muted
     if (
-      this.role === "webinarAttendee" &&
-      !this.currentUserStatus.includes(UserStatus.WebinarAudioUnmuted)
+      this.user.role === "webinarAttendee" &&
+      !this.user.status.includes(UserStatus.WebinarAudioUnmuted)
     )
       return;
     await this.updateProducer(this.producers.audio, false);

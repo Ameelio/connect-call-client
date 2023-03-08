@@ -229,7 +229,7 @@ const useConnectCall = ({
           contents,
           user: {
             id: user.id,
-            role: client.role,
+            role: client.user.role,
           },
           timestamp: new Date(),
         },

@@ -91,7 +91,10 @@ export type ServerMessages = {
     from: Participant;
     contents: string;
   };
-  statusChange: UserStatus[];
+  userStatus: {
+    userId: string;
+    status: UserStatus[];
+  }[];
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   peerConnectionState: { from: Participant } & ConnectionState;
 };
@@ -101,6 +104,8 @@ export type ClientMessages = {
     { callId: string; token: string },
     {
       role: Participant["role"];
+      userId: string;
+      status: UserStatus[];
       consumerTransportInfo: WebRtcInfo;
       producerTransportInfo?: WebRtcInfo;
       routerRtpCapabilities: RtpCapabilities;
