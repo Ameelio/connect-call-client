@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CallStatus, Operation, Participant } from "./API";
+import { CallStatus, Operation, Participant, Role, UserStatus } from "./API";
 import RoomClient, { ConnectionState, Peer } from "./RoomClient";
 
 export type AudioTrack = {
@@ -45,7 +45,11 @@ export type Message = {
 export type ConnectCall = {
   status: ClientStatus | CallStatus;
   error?: Error;
-  user?: Participant;
+  user?: {
+    id: string;
+    role: Role;
+    status: UserStatus[];
+  };
   submitOperation: (o: Operation) => Promise<void>;
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
@@ -83,6 +87,7 @@ const useConnectCall = ({
       user: Participant;
       stream: MediaStream;
       connectionState: ConnectionState;
+      status: UserStatus[];
     }[]
   >([]);
 
@@ -99,7 +104,12 @@ const useConnectCall = ({
   const handlePeerDisconnect = (user: Participant) =>
     setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
 
-  const handlePeerUpdate = ({ user, stream, connectionState }: Peer) => {
+  const handlePeerUpdate = ({
+    user,
+    stream,
+    connectionState,
+    status,
+  }: Peer) => {
     setPeers((peers) => {
       return [
         ...peers.filter((p) => p.user.id !== user.id),
@@ -107,6 +117,7 @@ const useConnectCall = ({
           user,
           stream,
           connectionState,
+          status,
         },
       ];
     });

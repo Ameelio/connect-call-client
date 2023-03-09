@@ -50,6 +50,7 @@ export type Peer = {
   user: Participant;
   stream: MediaStream;
   connectionState: ConnectionState;
+  status: UserStatus[];
 };
 
 export interface VideoState {
@@ -86,7 +87,6 @@ class RoomClient {
     string,
     Peer & {
       consumers: Partial<Record<MediaKind, Consumer>>;
-      status: UserStatus[];
     }
   > = {};
   public user: {
