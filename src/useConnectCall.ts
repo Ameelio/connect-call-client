@@ -91,6 +91,12 @@ const useConnectCall = ({
     }[]
   >([]);
 
+  const [trackedUser, setTrackedUser] = useState<{
+    id: string;
+    role: Role;
+    status: UserStatus[];
+  }>();
+
   const [messages, setMessages] = useState<Message[]>([]);
 
   const [error, setError] = useState<Error>();
@@ -121,6 +127,36 @@ const useConnectCall = ({
         },
       ];
     });
+  };
+
+  const handleUserStatusChange = (
+    changes: { userId: string; status: UserStatus[] }[]
+  ) => {
+    if (peers) {
+      const modifiedPeers = peers.map((peer) => {
+        const change = changes.find(({ userId }) => userId === peer.user.id);
+        if (change) {
+          return {
+            ...peer,
+            status: change.status,
+          };
+        }
+        return peer;
+      });
+
+      setPeers(modifiedPeers);
+    }
+
+    if (trackedUser) {
+      const selfChange = changes.find(({ userId }) => userId === user.id);
+
+      if (selfChange) {
+        setTrackedUser({
+          ...trackedUser,
+          status: selfChange.status,
+        });
+      }
+    }
   };
 
   const handleStatusChange = (status: CallStatus) => setStatus(status);
@@ -173,7 +209,10 @@ const useConnectCall = ({
       url: call.url,
       token: call.token,
     })
-      .then(setClient)
+      .then((client) => {
+        setClient(client);
+        setTrackedUser(client.user);
+      })
       .catch(handleError);
   }, [call?.id, call?.url, call?.token]);
 
@@ -195,6 +234,7 @@ const useConnectCall = ({
     client.on("onPeerDisconnect", handlePeerDisconnect);
     client.on("onPeerUpdate", handlePeerUpdate);
     client.on("onStatusChange", handleStatusChange);
+    client.on("onUserStatus", handleUserStatusChange);
     client.on("onTextMessage", handleTextMessage);
     client.on("onTimer", handleTimer);
     client.on("onConnectionState", handleConnectionState);
@@ -317,7 +357,7 @@ const useConnectCall = ({
     status,
     error,
     peers,
-    user: client?.user,
+    user: trackedUser,
     localAudio,
     localVideo,
     connectionState,
