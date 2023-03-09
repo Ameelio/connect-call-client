@@ -45,6 +45,7 @@ export type Message = {
 export type ConnectCall = {
   status: ClientStatus | CallStatus;
   error?: Error;
+  user?: Participant;
   submitOperation: (o: Operation) => Promise<void>;
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
@@ -84,6 +85,7 @@ const useConnectCall = ({
       connectionState: ConnectionState;
     }[]
   >([]);
+
   const [messages, setMessages] = useState<Message[]>([]);
 
   const [error, setError] = useState<Error>();
@@ -304,6 +306,7 @@ const useConnectCall = ({
     status,
     error,
     peers,
+    user: client?.user,
     localAudio,
     localVideo,
     connectionState,
