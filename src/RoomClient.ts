@@ -312,14 +312,21 @@ class RoomClient {
     });
 
     client.on("userStatus", (statusUpdates) => {
-      this.emitter.emit("onUserStatus", statusUpdates);
+      const knownStatusUpdates = statusUpdates.map(({ userId, status }) => ({
+        userId,
+        status: status.filter((x) =>
+          (Object.values(UserStatus) as string[]).includes(x)
+        ) as UserStatus[],
+      }));
 
-      statusUpdates.forEach(({ userId, status }) => {
+      this.emitter.emit("onUserStatus", knownStatusUpdates);
+
+      knownStatusUpdates.forEach(({ userId, status }) => {
         if (userId === this.user.id) {
           this.user.status = status;
           this.checkLocalMute();
         } else if (userId in this.peers) {
-          this.peers.userId.status = status;
+          this.peers[userId].status = status;
         }
       });
     });
@@ -378,7 +385,7 @@ class RoomClient {
       // If we are now remote muted but not locally muted,
       // locally mute.
       if (
-        !this.user.status.includes(UserStatus.WebinarAudioUnmuted) &&
+        this.user.status.includes(UserStatus.AudioMutedByServer) &&
         this.producers.audio &&
         !this.producers.audio.paused
       ) {
@@ -387,7 +394,7 @@ class RoomClient {
 
       // Same with video mute
       if (
-        this.user.status.includes(UserStatus.WebinarVideoMuted) &&
+        this.user.status.includes(UserStatus.VideoMutedByServer) &&
         this.producers.video &&
         !this.producers.video.paused
       ) {
@@ -411,11 +418,7 @@ class RoomClient {
   async resumeVideo() {
     if (!this.producers.video) return;
     // Do not allow resuming video when remote video muted
-    if (
-      this.user.role === "webinarAttendee" &&
-      !this.user.status.includes(UserStatus.WebinarVideoMuted)
-    )
-      return;
+    if (this.user.status.includes(UserStatus.VideoMutedByServer)) return;
     await this.updateProducer(this.producers.video, false);
   }
 
@@ -427,11 +430,7 @@ class RoomClient {
   async resumeAudio() {
     if (!this.producers.audio) return;
     // Do not allow resuming audio when remote muted
-    if (
-      this.user.role === "webinarAttendee" &&
-      !this.user.status.includes(UserStatus.WebinarAudioUnmuted)
-    )
-      return;
+    if (this.user.status.includes(UserStatus.AudioMutedByServer)) return;
     await this.updateProducer(this.producers.audio, false);
   }
 
