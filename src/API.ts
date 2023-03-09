@@ -89,7 +89,7 @@ export type ServerMessages = {
     user: Participant;
   };
   participantDisconnect: Participant;
-  joined: Participant & { callId: string };
+  joined: Participant & { callId: string; status: UserStatus[] };
   producerUpdate: {
     producerId: string;
     from: Participant;
@@ -103,7 +103,7 @@ export type ServerMessages = {
     contents: string;
   };
   userStatus: {
-    userId: string;
+    user: Participant;
 
     // NOTE: we accept arbitrary strings instead of
     // statuses, for forward-compatibility.

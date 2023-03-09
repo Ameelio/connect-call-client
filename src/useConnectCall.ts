@@ -129,34 +129,12 @@ const useConnectCall = ({
     });
   };
 
-  const handleUserStatusChange = (
-    changes: { userId: string; status: UserStatus[] }[]
-  ) => {
-    if (peers) {
-      const modifiedPeers = peers.map((peer) => {
-        const change = changes.find(({ userId }) => userId === peer.user.id);
-        if (change) {
-          return {
-            ...peer,
-            status: change.status,
-          };
-        }
-        return peer;
-      });
-
-      setPeers(modifiedPeers);
-    }
-
-    if (trackedUser) {
-      const selfChange = changes.find(({ userId }) => userId === user.id);
-
-      if (selfChange) {
-        setTrackedUser({
-          ...trackedUser,
-          status: selfChange.status,
-        });
-      }
-    }
+  const handleUserUpdate = (user: {
+    id: string;
+    role: Role;
+    status: UserStatus[];
+  }) => {
+    setTrackedUser(user);
   };
 
   const handleStatusChange = (status: CallStatus) => setStatus(status);
@@ -233,8 +211,8 @@ const useConnectCall = ({
     if (!client) return;
     client.on("onPeerDisconnect", handlePeerDisconnect);
     client.on("onPeerUpdate", handlePeerUpdate);
+    client.on("onUserUpdate", handleUserUpdate);
     client.on("onStatusChange", handleStatusChange);
-    client.on("onUserStatus", handleUserStatusChange);
     client.on("onTextMessage", handleTextMessage);
     client.on("onTimer", handleTimer);
     client.on("onConnectionState", handleConnectionState);

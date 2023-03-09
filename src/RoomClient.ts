@@ -71,7 +71,11 @@ export interface ConnectionState {
 
 type Events = {
   onStatusChange: CallStatus;
-  onUserStatus: { userId: string; status: UserStatus[] }[];
+  onUserUpdate: {
+    id: string;
+    role: Role;
+    status: UserStatus[];
+  };
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
@@ -255,6 +259,23 @@ class RoomClient {
       }
     );
 
+    // Listen for new joiners
+    client.on("joined", async ({ id, role, status }) => {
+      if (!this.peers[id]) {
+        this.peers[id] = {
+          user: { id, role },
+          consumers: {},
+          stream: new MediaStream(),
+          status,
+          connectionState: { quality: "unknown", ping: NaN },
+        };
+        this.emitter.emit("onPeerConnect", { id, role });
+      }
+
+      this.peers[id].status = status;
+      this.emitter.emit("onPeerUpdate", this.peers[id]);
+    });
+
     // listen for new peer tracks from the server
     client.on("consume", async ({ user, ...options }) => {
       const consumer = await consumerTransport.consume(options);
@@ -312,21 +333,31 @@ class RoomClient {
     });
 
     client.on("userStatus", (statusUpdates) => {
-      const knownStatusUpdates = statusUpdates.map(({ userId, status }) => ({
-        userId,
+      const knownStatusUpdates = statusUpdates.map(({ user, status }) => ({
+        user,
         status: status.filter((x) =>
           (Object.values(UserStatus) as string[]).includes(x)
         ) as UserStatus[],
       }));
 
-      this.emitter.emit("onUserStatus", knownStatusUpdates);
-
-      knownStatusUpdates.forEach(({ userId, status }) => {
-        if (userId === this.user.id) {
+      knownStatusUpdates.forEach(({ user, status }) => {
+        if (user.id === this.user.id) {
           this.user.status = status;
+          this.emitter.emit("onUserUpdate", this.user);
           this.checkLocalMute();
-        } else if (userId in this.peers) {
-          this.peers[userId].status = status;
+        } else {
+          if (user.id in this.peers) {
+            this.peers[user.id].status = status;
+          } else {
+            this.peers[user.id] = {
+              user,
+              consumers: {},
+              stream: new MediaStream(),
+              status: status,
+              connectionState: { quality: "unknown", ping: NaN },
+            };
+          }
+          this.emitter.emit("onPeerUpdate", this.peers[user.id]);
         }
       });
     });
