@@ -22,8 +22,9 @@ export enum Role {
 }
 
 export enum UserStatus {
-  WebinarAudioUnmuted = "WebinarAudioUnmuted",
-  WebinarVideoMuted = "WebinarVideoMuted",
+  AudioMutedByServer = "AudioMutedByServer",
+  VideoMutedByServer = "VideoMutedByServer",
+  HandRaised = "HandRaised",
 }
 
 export type Operation =
@@ -48,6 +49,16 @@ export type Operation =
     }
   | {
       type: "remoteVideoUnmute";
+      targetUserId: string;
+    }
+  | {
+      type: "raiseHand";
+    }
+  | {
+      type: "lowerHand";
+    }
+  | {
+      type: "remoteLowerHand";
       targetUserId: string;
     };
 
@@ -93,7 +104,13 @@ export type ServerMessages = {
   };
   userStatus: {
     userId: string;
-    status: UserStatus[];
+
+    // NOTE: we accept arbitrary strings instead of
+    // statuses, for forward-compatibility.
+    // `connect-call-handler` needs some amount of
+    // forward-compatibility because it is used in connect-mobile.
+    // We will ignore statuses that we don't know about.
+    status: (UserStatus | string)[];
   }[];
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   peerConnectionState: { from: Participant } & ConnectionState;
