@@ -175,6 +175,7 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
+          "status": Array [],
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -185,7 +186,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": Role.visitParticipant,
+            "role": "visitParticipant",
             "type": "user",
           },
         },
@@ -205,6 +206,7 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
+          "status": Array [],
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -218,7 +220,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": Role.visitParticipant,
+            "role": "visitParticipant",
             "type": "user",
           },
         },
@@ -242,6 +244,7 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
+          "status": Array [],
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -252,7 +255,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": Role.visitParticipant,
+            "role": "visitParticipant",
             "type": "user",
           },
         },
@@ -351,7 +354,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "2",
-            "role": Role.visitParticipant,
+            "role": "visitParticipant",
           },
         },
       ]
@@ -378,7 +381,7 @@ describe("useConnectCall", () => {
           "timestamp": 2021-11-23T12:34:56.789Z,
           "user": Object {
             "id": "1",
-            "role": Role.visitParticipant,
+            "role": "visitParticipant",
           },
         },
       ]

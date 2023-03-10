@@ -8,7 +8,7 @@ export function clientFactory() {
   const emitter = mitt();
   const emitResponses: EmitResponses = {
     join: {
-      role: "participant",
+      role: "visitParticipant",
       consumerTransportInfo: {},
       producerTransportInfo: {},
       routerRtpCapabilities: {},
