@@ -134,7 +134,8 @@ const useConnectCall = ({
     role: Role;
     status: UserStatus[];
   }) => {
-    setTrackedUser(user);
+    // Unpack and repack properties so as to force reference change
+    setTrackedUser({ ...user });
   };
 
   const handleStatusChange = (status: CallStatus) => setStatus(status);
