@@ -1,6 +1,6 @@
 {
   "name": "connect-call-client",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "client for the connect-call platform",
   "license": "GPL-3.0",
   "main": "lib/index.js",
