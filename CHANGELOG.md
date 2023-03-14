@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- fix simulcast configuration in new versions of Chrome
+
 ## [0.9.3] - 2022-11-02
 
 - avoid race condition in development with React Strict mode
