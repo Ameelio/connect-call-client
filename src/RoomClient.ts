@@ -79,6 +79,11 @@ type Events = {
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
+  onProducerUpdate: {
+    producerId: string;
+    paused: boolean;
+    type: MediaKind;
+  };
   onTextMessage: { user: Participant; contents: string };
   onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   onConnectionState: ConnectionState;
@@ -249,6 +254,8 @@ class RoomClient {
     producerTransport?.on(
       "produce",
       async ({ kind, rtpParameters }, callback) => {
+        // TODO this event will need to inform the server
+        // about whether this is a screenshare stream
         const { producerId } = await client.emit("produce", {
           callId: this.callId,
           kind,
@@ -277,6 +284,8 @@ class RoomClient {
     });
 
     // listen for new peer tracks from the server
+    // TODO this event will need to distinguish between types of video stream
+    // (screenshare vs camera)
     client.on("consume", async ({ user, ...options }) => {
       const consumer = await consumerTransport.consume(options);
 
@@ -404,6 +413,7 @@ class RoomClient {
       ...config[type],
       track,
     });
+
     this.producers[type] = producer;
   }
 
@@ -490,6 +500,11 @@ class RoomClient {
     reason?: PRODUCER_UPDATE_REASONS
   ) {
     paused ? producer.pause() : producer.resume();
+    this.emitter.emit("onProducerUpdate", {
+      producerId: producer.id,
+      paused,
+      type: producer.kind as MediaKind,
+    });
     await this.client.emit("producerUpdate", {
       callId: this.callId,
       producerId: producer.id,

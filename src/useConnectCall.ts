@@ -1,3 +1,4 @@
+import { MediaKind } from "mediasoup-client/lib/types";
 import { useCallback, useEffect, useState } from "react";
 import { CallStatus, Operation, Participant, Role, UserStatus } from "./API";
 import RoomClient, { ConnectionState, Peer } from "./RoomClient";
@@ -105,6 +106,24 @@ const useConnectCall = ({
   const handleError = (e: Error) => {
     setStatus("errored");
     setError(e);
+  };
+
+  const handleProducerUpdate = ({
+    paused,
+    type,
+  }: {
+    paused: boolean;
+    type: MediaKind;
+  }) => {
+    if (type === "video") {
+      setLocalVideo((existing) =>
+        existing ? { ...existing, paused } : undefined
+      );
+    } else if (type === "audio") {
+      setLocalAudio((existing) =>
+        existing ? { ...existing, paused } : undefined
+      );
+    }
   };
 
   const handlePeerDisconnect = (user: Participant) =>
@@ -216,13 +235,16 @@ const useConnectCall = ({
     client.on("onStatusChange", handleStatusChange);
     client.on("onTextMessage", handleTextMessage);
     client.on("onTimer", handleTimer);
+    client.on("onProducerUpdate", handleProducerUpdate);
     client.on("onConnectionState", handleConnectionState);
     return () => {
       client.off("onPeerDisconnect", handlePeerDisconnect);
       client.off("onPeerUpdate", handlePeerUpdate);
+      client.off("onUserUpdate", handleUserUpdate);
       client.off("onStatusChange", handleStatusChange);
       client.off("onTextMessage", handleTextMessage);
       client.off("onTimer", handleTimer);
+      client.off("onProducerUpdate", handleProducerUpdate);
       client.off("onConnectionState", handleConnectionState);
     };
   }, [client, handleTimer, handleConnectionState]);
@@ -275,9 +297,6 @@ const useConnectCall = ({
     if (localAudio?.paused === undefined)
       throw new Error("Not producing audio");
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
-    setLocalAudio((existing) =>
-      existing ? { ...existing, paused: !localAudio.paused } : undefined
-    );
   }, [client, localAudio?.paused, setLocalAudio]);
 
   const submitOperation = useCallback(
@@ -294,9 +313,6 @@ const useConnectCall = ({
     if (localVideo?.paused === undefined)
       throw new Error("Not producing video");
     localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
-    setLocalVideo((existing) =>
-      existing ? { ...existing, paused: !localVideo.paused } : undefined
-    );
   }, [client, localVideo?.paused, setLocalVideo]);
 
   const terminateCall = useCallback(async () => {

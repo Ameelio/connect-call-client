@@ -1,7 +1,13 @@
 class Transport {
   on = jest.fn();
   close = jest.fn();
-  produce = jest.fn();
+  produce = jest.fn().mockImplementation((options) => ({
+    track: options,
+    close: jest.fn(),
+    pause: jest.fn(),
+    resume: jest.fn(),
+    kind: options.track.kind,
+  }));
   consume = jest.fn().mockImplementation((options) => ({
     track: options,
     close: jest.fn(),

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
-import { act as actHook, renderHook } from "@testing-library/react-hooks";
+import { act as actHook, renderHook } from "@testing-library/react-hooks/pure";
 import { advanceTo } from "jest-date-mock";
 import { Role } from "./API";
 import Client from "./Client";
@@ -84,7 +84,6 @@ describe("useConnectCall", () => {
     const track = (
       await navigator.mediaDevices.getUserMedia({ audio: true })
     ).getAudioTracks()[0];
-    act;
     await actHook(() => result.current.produceTrack(track));
     expect(result.current.localAudio).toBeTruthy();
 

@@ -9,6 +9,7 @@ export function clientFactory() {
   const emitResponses: EmitResponses = {
     join: {
       role: "visitParticipant",
+      status: [],
       consumerTransportInfo: {},
       producerTransportInfo: {},
       routerRtpCapabilities: {},
