@@ -61,6 +61,7 @@ export type ConnectCall = {
   submitOperation: (o: Operation) => Promise<void>;
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
+  localScreenshare: VideoTrack | undefined;
   connectionState: ConnectionState;
   toggleAudio: () => void;
   toggleVideo: () => void;
@@ -388,6 +389,7 @@ const useConnectCall = ({
     user: trackedUser,
     localAudio,
     localVideo,
+    localScreenshare,
     connectionState,
     toggleAudio,
     toggleVideo,
