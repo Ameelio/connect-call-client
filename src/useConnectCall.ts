@@ -1,6 +1,13 @@
 import { MediaKind } from "mediasoup-client/lib/types";
 import { useCallback, useEffect, useState } from "react";
-import { CallStatus, Operation, Participant, Role, UserStatus } from "./API";
+import {
+  CallStatus,
+  Operation,
+  Participant,
+  ProducerLabel,
+  Role,
+  UserStatus,
+} from "./API";
 import RoomClient, { ConnectionState, Peer } from "./RoomClient";
 
 export type AudioTrack = {
@@ -57,7 +64,10 @@ export type ConnectCall = {
   connectionState: ConnectionState;
   toggleAudio: () => void;
   toggleVideo: () => void;
-  produceTrack: (track: MediaStreamTrack) => Promise<void>;
+  produceTrack: (
+    track: MediaStreamTrack,
+    label: ProducerLabel
+  ) => Promise<void>;
   peers: Peer[];
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
@@ -79,6 +89,7 @@ const useConnectCall = ({
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioTrack>();
   const [localVideo, setLocalVideo] = useState<VideoTrack>();
+  const [localScreenshare, setLocalScreenshare] = useState<VideoTrack>();
   const [connectionState, setConnectionState] = useState<ConnectionState>({
     quality: "unknown",
     ping: NaN,
@@ -111,15 +122,21 @@ const useConnectCall = ({
   const handleProducerUpdate = ({
     paused,
     type,
+    label,
   }: {
     paused: boolean;
     type: MediaKind;
+    label: ProducerLabel;
   }) => {
-    if (type === "video") {
+    if (label === "video") {
       setLocalVideo((existing) =>
         existing ? { ...existing, paused } : undefined
       );
-    } else if (type === "audio") {
+    } else if (label === "screenshare") {
+      setLocalScreenshare((existing) =>
+        existing ? { ...existing, paused } : undefined
+      );
+    } else if (label === "audio") {
       setLocalAudio((existing) =>
         existing ? { ...existing, paused } : undefined
       );
@@ -195,6 +212,7 @@ const useConnectCall = ({
           paused: true,
         });
       }
+      // TODO screenshare FRUX things
     },
     [setConnectionState, localVideo]
   );
@@ -321,24 +339,36 @@ const useConnectCall = ({
   }, [client]);
 
   const produceTrack = useCallback(
-    async (track: MediaStreamTrack) => {
+    async (track: MediaStreamTrack, label: ProducerLabel) => {
       if (!client) throw new Error("Not connected");
-      await client.produce(track);
+      await client.produce(track, label);
       const stream = new MediaStream();
       stream.addTrack(track);
-      if (track.kind === "audio") {
+      if (label === ProducerLabel.audio) {
         setLocalAudio({
           stream,
           paused: false,
         });
       }
-      if (track.kind === "video") {
+      if (label === ProducerLabel.video) {
         const trackSettings = track.getSettings();
         const videoWidth = trackSettings.width;
         const videoHeight = trackSettings.height;
         const aspectRatio =
           videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
         setLocalVideo({
+          stream,
+          paused: false,
+          aspectRatio,
+        });
+      }
+      if (label === ProducerLabel.screenshare) {
+        const trackSettings = track.getSettings();
+        const videoWidth = trackSettings.width;
+        const videoHeight = trackSettings.height;
+        const aspectRatio =
+          videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
+        setLocalScreenshare({
           stream,
           paused: false,
           aspectRatio,

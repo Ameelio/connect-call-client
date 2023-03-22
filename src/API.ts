@@ -8,6 +8,12 @@ import {
 } from "mediasoup-client/lib/types";
 import { ConnectionState } from "./RoomClient";
 
+export enum ProducerLabel {
+  video = "video",
+  audio = "audio",
+  screenshare = "screenshare",
+}
+
 export enum ParticipantEventDetail {
   UserDisconnected = "user_disconnected",
   ConnectionClosed = "connection_closed",
@@ -95,6 +101,7 @@ export type ServerMessages = {
     from: Participant;
     paused: boolean;
     type: MediaKind;
+    label: ProducerLabel;
     timestamp: string;
     reason?: PRODUCER_UPDATE_REASONS;
   };
@@ -144,7 +151,12 @@ export type ClientMessages = {
   finishConnecting: [{ callId: string }, { success: true }];
   heartbeat: [Record<string, never>, Record<string, never>];
   produce: [
-    { callId: string; kind: MediaKind; rtpParameters: RtpParameters },
+    {
+      callId: string;
+      kind: MediaKind;
+      rtpParameters: RtpParameters;
+      label: ProducerLabel;
+    },
     { producerId: string }
   ];
   producerUpdate: [
@@ -153,6 +165,7 @@ export type ClientMessages = {
       paused: boolean;
       producerId: string;
       type: MediaKind;
+      label: ProducerLabel;
       reason?: PRODUCER_UPDATE_REASONS;
     },
     { success: true }

@@ -12,6 +12,7 @@ import {
   CallStatus,
   Operation,
   Participant,
+  ProducerLabel,
   PRODUCER_UPDATE_REASONS,
   Role,
   UserStatus,
@@ -83,6 +84,7 @@ type Events = {
     producerId: string;
     paused: boolean;
     type: MediaKind;
+    label: ProducerLabel;
   };
   onTextMessage: { user: Participant; contents: string };
   onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
@@ -91,11 +93,11 @@ type Events = {
 };
 
 class RoomClient {
-  private producers: Partial<Record<MediaKind, Producer>> = {};
+  private producers: Partial<Record<ProducerLabel, Producer>> = {};
   private peers: Record<
     string,
     Peer & {
-      consumers: Partial<Record<MediaKind, Consumer>>;
+      consumers: Partial<Record<ProducerLabel, Consumer>>;
     }
   > = {};
   public user: {
@@ -253,13 +255,14 @@ class RoomClient {
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
     producerTransport?.on(
       "produce",
-      async ({ kind, rtpParameters }, callback) => {
+      async ({ appData, kind, rtpParameters }, callback) => {
         // TODO this event will need to inform the server
         // about whether this is a screenshare stream
         const { producerId } = await client.emit("produce", {
           callId: this.callId,
           kind,
           rtpParameters,
+          label: appData.label,
         });
 
         callback({ id: producerId });
@@ -306,20 +309,23 @@ class RoomClient {
     });
 
     // listen for tracks pausing and resuming
-    client.on("producerUpdate", async ({ from, paused, type, reason }) => {
-      const peer = this.peers[from.id];
-      if (!peer) throw new Error(`Unknown peer update ${from.id}`);
-      const track = peer.consumers[type]?.track;
-      if (track) {
-        paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
+    client.on(
+      "producerUpdate",
+      async ({ from, paused, type, label, reason }) => {
+        const peer = this.peers[from.id];
+        if (!peer) throw new Error(`Unknown peer update ${from.id}`);
+        const track = peer.consumers[label]?.track;
+        if (track) {
+          paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
+        }
+        if (!paused) {
+          peer.connectionState.videoDisabled = false;
+        } else if (reason === "paused_video_bad_connection") {
+          peer.connectionState.videoDisabled = true;
+        }
+        this.emitter.emit("onPeerUpdate", peer);
       }
-      if (!paused) {
-        peer.connectionState.videoDisabled = false;
-      } else if (reason === "paused_video_bad_connection") {
-        peer.connectionState.videoDisabled = true;
-      }
-      this.emitter.emit("onPeerUpdate", peer);
-    });
+    );
 
     // listen for peers disconnecting
     client.on("participantDisconnect", async (user) => {
@@ -402,19 +408,19 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
-  async produce(track: MediaStreamTrack): Promise<void> {
-    const type = track.kind as "audio" | "video";
+  async produce(track: MediaStreamTrack, label: ProducerLabel): Promise<void> {
     if (!this.producerTransport)
       throw new Error(`RoomClient is not able to produce media`);
-    if (this.producers[type])
-      throw new Error(`RoomClient is already producing ${type}`);
+    if (this.producers[label])
+      throw new Error(`RoomClient is already producing ${label}`);
 
     const producer = await this.producerTransport.produce({
-      ...config[type],
+      ...config[track.kind as MediaKind],
       track,
+      appData: { label },
     });
 
-    this.producers[type] = producer;
+    this.producers[label] = producer;
   }
 
   async terminate() {
@@ -503,12 +509,14 @@ class RoomClient {
     this.emitter.emit("onProducerUpdate", {
       producerId: producer.id,
       paused,
+      label: producer.appData.label,
       type: producer.kind as MediaKind,
     });
     await this.client.emit("producerUpdate", {
       callId: this.callId,
       producerId: producer.id,
       paused,
+      label: producer.appData.label,
       type: producer.kind as MediaKind,
       ...(reason ? { reason: reason } : {}),
     });

@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
 import { act as actHook, renderHook } from "@testing-library/react-hooks/pure";
 import { advanceTo } from "jest-date-mock";
-import { Role } from "./API";
+import { ProducerLabel, Role } from "./API";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
 import useConnectCall from "./useConnectCall";
@@ -84,7 +84,9 @@ describe("useConnectCall", () => {
     const track = (
       await navigator.mediaDevices.getUserMedia({ audio: true })
     ).getAudioTracks()[0];
-    await actHook(() => result.current.produceTrack(track));
+    await actHook(() =>
+      result.current.produceTrack(track, ProducerLabel.audio)
+    );
     expect(result.current.localAudio).toBeTruthy();
 
     expect(result.current.localAudio!.paused).toBe(false);
@@ -112,7 +114,9 @@ describe("useConnectCall", () => {
       await navigator.mediaDevices.getUserMedia({ video: true })
     ).getVideoTracks()[0];
     act;
-    await actHook(() => result.current.produceTrack(track));
+    await actHook(() =>
+      result.current.produceTrack(track, ProducerLabel.video)
+    );
     expect(result.current.localVideo).toBeTruthy();
 
     // toggle
