@@ -178,6 +178,9 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
+          "screenshareStream": MediaStream {
+            "tracks": Array [],
+          },
           "status": Array [],
           "stream": MediaStream {
             "tracks": Array [
@@ -208,6 +211,9 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": NaN,
             "quality": "unknown",
+          },
+          "screenshareStream": MediaStream {
+            "tracks": Array [],
           },
           "status": Array [],
           "stream": MediaStream {
@@ -246,6 +252,9 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": NaN,
             "quality": "unknown",
+          },
+          "screenshareStream": MediaStream {
+            "tracks": Array [],
           },
           "status": Array [],
           "stream": MediaStream {

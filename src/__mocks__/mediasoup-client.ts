@@ -7,6 +7,7 @@ class Transport {
     pause: jest.fn(),
     resume: jest.fn(),
     kind: options.track.kind,
+    appData: options.appData,
   }));
   consume = jest.fn().mockImplementation((options) => ({
     track: options,
