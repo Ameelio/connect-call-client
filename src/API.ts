@@ -92,6 +92,7 @@ export type PRODUCER_UPDATE_REASONS = typeof producerUpdateReasons[number];
 export type ServerMessages = {
   callStatus: CallStatus;
   consume: Required<Omit<ConsumerOptions, "appData">> & {
+    label: ProducerLabel;
     user: Participant;
   };
   participantDisconnect: Participant;

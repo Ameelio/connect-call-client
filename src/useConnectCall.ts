@@ -98,6 +98,7 @@ const useConnectCall = ({
     {
       user: Participant;
       stream: MediaStream;
+      screenshareStream: MediaStream;
       connectionState: ConnectionState;
       status: UserStatus[];
     }[]
@@ -149,6 +150,7 @@ const useConnectCall = ({
   const handlePeerUpdate = ({
     user,
     stream,
+    screenshareStream,
     connectionState,
     status,
   }: Peer) => {
@@ -158,6 +160,7 @@ const useConnectCall = ({
         {
           user,
           stream,
+          screenshareStream,
           connectionState,
           status,
         },

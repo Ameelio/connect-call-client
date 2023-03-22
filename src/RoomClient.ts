@@ -50,6 +50,7 @@ const config: Record<MediaKind, ProducerOptions> = {
 export type Peer = {
   user: Participant;
   stream: MediaStream;
+  screenshareStream: MediaStream;
   connectionState: ConnectionState;
   status: UserStatus[];
 };
@@ -276,6 +277,7 @@ class RoomClient {
           user: { id, role },
           consumers: {},
           stream: new MediaStream(),
+          screenshareStream: new MediaStream(),
           status,
           connectionState: { quality: "unknown", ping: NaN },
         };
@@ -297,14 +299,20 @@ class RoomClient {
           user,
           consumers: {},
           stream: new MediaStream(),
+          screenshareStream: new MediaStream(),
           status: [],
           connectionState: { quality: "unknown", ping: NaN },
         };
         this.emitter.emit("onPeerConnect", user);
       }
 
-      this.peers[user.id].consumers[options.kind] = consumer;
-      this.peers[user.id].stream.addTrack(consumer.track);
+      this.peers[user.id].consumers[options.label] = consumer;
+      // Screenshare goes in a different stream
+      if (options.label === ProducerLabel.screenshare) {
+        this.peers[user.id].screenshareStream.addTrack(consumer.track);
+      } else {
+        this.peers[user.id].stream.addTrack(consumer.track);
+      }
       this.emitter.emit("onPeerUpdate", this.peers[user.id]);
     });
 
@@ -368,6 +376,7 @@ class RoomClient {
               user,
               consumers: {},
               stream: new MediaStream(),
+              screenshareStream: new MediaStream(),
               status: status,
               connectionState: { quality: "unknown", ping: NaN },
             };
