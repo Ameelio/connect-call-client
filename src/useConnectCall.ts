@@ -65,6 +65,7 @@ export type ConnectCall = {
   connectionState: ConnectionState;
   toggleAudio: () => void;
   toggleVideo: () => void;
+  closeProducer: (label: ProducerLabel) => Promise<void>;
   produceTrack: (
     track: MediaStreamTrack,
     label: ProducerLabel
@@ -242,6 +243,27 @@ const useConnectCall = ({
     client.close();
   }, [client]);
 
+  const closeProducer = useCallback(
+    async (label: ProducerLabel) => {
+      if (!client) return;
+
+      const producer = client.producers[label];
+
+      if (!producer) return;
+
+      if (label === ProducerLabel.video) {
+        setLocalScreenshare(undefined);
+      } else if (label === ProducerLabel.audio) {
+        setLocalAudio(undefined);
+      } else if (label === ProducerLabel.screenshare) {
+        setLocalScreenshare(undefined);
+      }
+
+      await client.closeProducer(label);
+    },
+    [client]
+  );
+
   useEffect(() => {
     if (!client) return;
     setStatus("connected");
@@ -390,6 +412,7 @@ const useConnectCall = ({
     localAudio,
     localVideo,
     localScreenshare,
+    closeProducer,
     connectionState,
     toggleAudio,
     toggleVideo,

@@ -94,7 +94,7 @@ type Events = {
 };
 
 class RoomClient {
-  private producers: Partial<Record<ProducerLabel, Producer>> = {};
+  producers: Partial<Record<ProducerLabel, Producer>> = {};
   private peers: Record<
     string,
     Peer & {
@@ -432,6 +432,19 @@ class RoomClient {
     this.producers[label] = producer;
   }
 
+  async closeProducer(label: ProducerLabel): Promise<void> {
+    const producer = this.producers[label];
+
+    if (!producer) return;
+
+    await producer.close();
+    await this.client.emit("producerClose", {
+      callId: this.callId,
+      producerId: producer.id,
+    });
+    delete this.producers[label];
+  }
+
   async terminate() {
     await this.submitOperation({ type: "terminate" });
   }
@@ -501,6 +514,7 @@ class RoomClient {
     this.producerTransport?.close();
     this.producers.audio?.close();
     this.producers.video?.close();
+    this.producers.screenshare?.close();
     this.emitter.all.clear();
     this.client.connectionMonitor.stop();
     Object.values(this.peers).forEach((peer) => {

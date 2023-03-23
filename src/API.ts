@@ -160,6 +160,13 @@ export type ClientMessages = {
     },
     { producerId: string }
   ];
+  producerClose: [
+    {
+      callId: string;
+      producerId: string;
+    },
+    { success: true }
+  ];
   producerUpdate: [
     {
       callId: string;
