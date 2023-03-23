@@ -106,6 +106,12 @@ export type ServerMessages = {
     timestamp: string;
     reason?: PRODUCER_UPDATE_REASONS;
   };
+  producerClose: {
+    producerId: string;
+    from: Participant;
+    type: MediaKind;
+    label: ProducerLabel;
+  };
   textMessage: {
     from: Participant;
     contents: string;

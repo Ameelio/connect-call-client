@@ -324,7 +324,19 @@ class RoomClient {
         if (!peer) throw new Error(`Unknown peer update ${from.id}`);
         const track = peer.consumers[label]?.track;
         if (track) {
-          paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
+          if (label === ProducerLabel.screenshare) {
+            if (paused) {
+              peer.screenshareStream.removeTrack(track);
+            } else {
+              peer.screenshareStream.addTrack(track);
+            }
+          } else {
+            if (paused) {
+              peer.stream.removeTrack(track);
+            } else {
+              peer.stream.addTrack(track);
+            }
+          }
         }
         if (!paused) {
           peer.connectionState.videoDisabled = false;
@@ -334,6 +346,27 @@ class RoomClient {
         this.emitter.emit("onPeerUpdate", peer);
       }
     );
+
+    // listen for tracks going away
+    client.on("producerClose", async ({ from, type, label }) => {
+      const peer = this.peers[from.id];
+      if (!peer) throw new Error(`Unknown peer update ${from.id}`);
+      const consumer = peer.consumers[label];
+      if (!consumer) return;
+
+      consumer.close();
+
+      const track = consumer.track;
+      if (track) {
+        if (label === ProducerLabel.screenshare) {
+          peer.screenshareStream.removeTrack(track);
+        } else {
+          peer.stream.removeTrack(track);
+        }
+      }
+      delete peer.consumers[label];
+      this.emitter.emit("onPeerUpdate", peer);
+    });
 
     // listen for peers disconnecting
     client.on("participantDisconnect", async (user) => {
