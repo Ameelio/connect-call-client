@@ -483,25 +483,23 @@ class RoomClient {
   }
 
   async checkLocalMute() {
-    if (this.user.role === "webinarAttendee") {
-      // If we are now remote muted but not locally muted,
-      // locally mute.
-      if (
-        this.user.status.includes(UserStatus.AudioMutedByServer) &&
-        this.producers.audio &&
-        !this.producers.audio.paused
-      ) {
-        this.pauseAudio();
-      }
+    // If we are now remote muted but not locally muted,
+    // locally mute.
+    if (
+      this.user.status.includes(UserStatus.AudioMutedByServer) &&
+      this.producers.audio &&
+      !this.producers.audio.paused
+    ) {
+      this.pauseAudio();
+    }
 
-      // Same with video mute
-      if (
-        this.user.status.includes(UserStatus.VideoMutedByServer) &&
-        this.producers.video &&
-        !this.producers.video.paused
-      ) {
-        this.pauseVideo();
-      }
+    // Same with video mute
+    if (
+      this.user.status.includes(UserStatus.VideoMutedByServer) &&
+      this.producers.video &&
+      !this.producers.video.paused
+    ) {
+      this.pauseVideo();
     }
   }
 
