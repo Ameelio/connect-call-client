@@ -348,7 +348,7 @@ class RoomClient {
     );
 
     // listen for tracks going away
-    client.on("producerClose", async ({ from, type, label }) => {
+    client.on("producerClose", async ({ from, label }) => {
       const peer = this.peers[from.id];
       if (!peer) throw new Error(`Unknown peer update ${from.id}`);
       const consumer = peer.consumers[label];

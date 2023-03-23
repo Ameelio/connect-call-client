@@ -109,7 +109,7 @@ export type ServerMessages = {
   producerClose: {
     producerId: string;
     from: Participant;
-    type: MediaKind;
+    kind: MediaKind;
     label: ProducerLabel;
   };
   textMessage: {
