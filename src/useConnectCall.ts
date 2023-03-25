@@ -2,7 +2,6 @@ import { MediaKind } from "mediasoup-client/lib/types";
 import { useCallback, useEffect, useState } from "react";
 import {
   CallStatus,
-  Operation,
   Participant,
   ProducerLabel,
   Role,
@@ -58,7 +57,6 @@ export type ConnectCall = {
     role: Role;
     status: UserStatus[];
   };
-  submitOperation: (o: Operation) => Promise<void>;
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
   localScreenshare: VideoTrack | undefined;
@@ -74,6 +72,15 @@ export type ConnectCall = {
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
   terminateCall: () => Promise<void>;
+  textMessage: (contents: string) => Promise<void>;
+  terminate: () => Promise<void>;
+  remoteAudioMute: (targetUserId: string) => Promise<void>;
+  remoteAudioUnmute: (targetUserId: string) => Promise<void>;
+  remoteVideoMute: (targetUserId: string) => Promise<void>;
+  remoteVideoUnmute: (targetUserId: string) => Promise<void>;
+  raiseHand: () => Promise<void>;
+  lowerHand: () => Promise<void>;
+  remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
 };
 
@@ -343,15 +350,6 @@ const useConnectCall = ({
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
   }, [client, localAudio?.paused, setLocalAudio]);
 
-  const submitOperation = useCallback(
-    async (operation: Operation) => {
-      if (!client) throw new Error("Not connected");
-
-      client.submitOperation(operation);
-    },
-    [client]
-  );
-
   const toggleVideo = useCallback(async () => {
     if (!client) throw new Error("Not connected");
     if (localVideo?.paused === undefined)
@@ -359,10 +357,66 @@ const useConnectCall = ({
     localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
   }, [client, localVideo?.paused, setLocalVideo]);
 
+  // Operations
   const terminateCall = useCallback(async () => {
     if (!client) throw new Error("Not connected");
     await client.terminate();
   }, [client]);
+
+  const terminate = terminateCall;
+
+  const textMessage = useCallback(
+    async (contents: string) => {
+      if (!client) throw new Error("Not connected");
+      await client.textMessage(contents);
+    },
+    [client]
+  );
+
+  const remoteAudioMute = useCallback(
+    async (targetUserId: string) => {
+      if (!client) throw new Error("Not connected");
+      await client.remoteAudioMute(targetUserId);
+    },
+    [client]
+  );
+  const remoteAudioUnmute = useCallback(
+    async (targetUserId: string) => {
+      if (!client) throw new Error("Not connected");
+      await client.remoteAudioUnmute(targetUserId);
+    },
+    [client]
+  );
+  const remoteVideoMute = useCallback(
+    async (targetUserId: string) => {
+      if (!client) throw new Error("Not connected");
+      await client.remoteVideoMute(targetUserId);
+    },
+    [client]
+  );
+  const remoteVideoUnmute = useCallback(
+    async (targetUserId: string) => {
+      if (!client) throw new Error("Not connected");
+      await client.remoteVideoUnmute(targetUserId);
+    },
+    [client]
+  );
+
+  const raiseHand = useCallback(async () => {
+    if (!client) throw new Error("Not connected");
+    await client.raiseHand();
+  }, [client]);
+  const lowerHand = useCallback(async () => {
+    if (!client) throw new Error("Not connected");
+    await client.lowerHand();
+  }, [client]);
+  const remoteLowerHand = useCallback(
+    async (targetUserId: string) => {
+      if (!client) throw new Error("Not connected");
+      await client.remoteLowerHand(targetUserId);
+    },
+    [client]
+  );
 
   const produceTrack = useCallback(
     async (track: MediaStreamTrack, label: ProducerLabel) => {
@@ -416,12 +470,23 @@ const useConnectCall = ({
     connectionState,
     toggleAudio,
     toggleVideo,
-    submitOperation,
     produceTrack,
     messages,
     sendMessage,
-    terminateCall,
     disconnect,
+
+    // Operations
+    textMessage,
+    terminate,
+    remoteAudioMute,
+    remoteAudioUnmute,
+    remoteVideoMute,
+    remoteVideoUnmute,
+    raiseHand,
+    lowerHand,
+    remoteLowerHand,
+
+    terminateCall,
   };
 };
 

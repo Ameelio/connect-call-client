@@ -10,7 +10,6 @@ import {
 import mitt, { Emitter } from "mitt";
 import {
   CallStatus,
-  Operation,
   Participant,
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
@@ -478,10 +477,6 @@ class RoomClient {
     delete this.producers[label];
   }
 
-  async terminate() {
-    await this.submitOperation({ type: "terminate" });
-  }
-
   async checkLocalMute() {
     // If we are now remote muted but not locally muted,
     // locally mute.
@@ -501,13 +496,6 @@ class RoomClient {
     ) {
       this.pauseVideo();
     }
-  }
-
-  async submitOperation(operation: Operation) {
-    await this.client.emit("operation", {
-      callId: this.callId,
-      operation,
-    });
   }
 
   async pauseVideo(reason?: PRODUCER_UPDATE_REASONS) {
@@ -534,8 +522,56 @@ class RoomClient {
     await this.updateProducer(this.producers.audio, false);
   }
 
+  async terminate() {
+    await this.client.emit("terminate", {});
+  }
+
+  async textMessage(contents: string) {
+    await this.client.emit("textMessage", {
+      contents,
+    });
+  }
+
+  async remoteAudioMute(targetUserId: string) {
+    await this.client.emit("remoteAudioMute", {
+      targetUserId,
+    });
+  }
+
+  async remoteAudioUnmute(targetUserId: string) {
+    await this.client.emit("remoteAudioUnmute", {
+      targetUserId,
+    });
+  }
+
+  async remoteVideoMute(targetUserId: string) {
+    await this.client.emit("remoteVideoMute", {
+      targetUserId,
+    });
+  }
+
+  async remoteVideoUnmute(targetUserId: string) {
+    await this.client.emit("remoteVideoUnmute", {
+      targetUserId,
+    });
+  }
+
+  async remoteLowerHand(targetUserId: string) {
+    await this.client.emit("remoteLowerHand", {
+      targetUserId,
+    });
+  }
+
+  async raiseHand() {
+    await this.client.emit("raiseHand", {});
+  }
+
+  async lowerHand() {
+    await this.client.emit("lowerHand", {});
+  }
+
   async sendMessage(contents: string) {
-    await this.submitOperation({ type: "textMessage", contents });
+    await this.textMessage(contents);
   }
 
   async close() {

@@ -33,41 +33,6 @@ export enum UserStatus {
   HandRaised = "HandRaised",
 }
 
-export type Operation =
-  | {
-      type: "terminate";
-    }
-  | {
-      type: "textMessage";
-      contents: string;
-    }
-  | {
-      type: "remoteAudioMute";
-      targetUserId: string;
-    }
-  | {
-      type: "remoteAudioUnmute";
-      targetUserId: string;
-    }
-  | {
-      type: "remoteVideoMute";
-      targetUserId: string;
-    }
-  | {
-      type: "remoteVideoUnmute";
-      targetUserId: string;
-    }
-  | {
-      type: "raiseHand";
-    }
-  | {
-      type: "lowerHand";
-    }
-  | {
-      type: "remoteLowerHand";
-      targetUserId: string;
-    };
-
 export interface Participant {
   role: Role;
   id: string;
@@ -142,7 +107,15 @@ export type ClientMessages = {
       routerRtpCapabilities: RtpCapabilities;
     }
   ];
-  operation: [{ callId: string; operation: Operation }, { success: true }];
+  textMessage: [{ contents: string }, { success: true }];
+  terminate: [{}, { success: true }];
+  remoteAudioMute: [{ targetUserId: string }, { success: true }];
+  remoteAudioUnmute: [{ targetUserId: string }, { success: true }];
+  remoteVideoMute: [{ targetUserId: string }, { success: true }];
+  remoteVideoUnmute: [{ targetUserId: string }, { success: true }];
+  raiseHand: [{}, { success: true }];
+  lowerHand: [{}, { success: true }];
+  remoteLowerHand: [{ targetUserId: string }, { success: true }];
   declareRtpCapabilities: [
     { rtpCapabilities: RtpCapabilities },
     { success: true }
@@ -184,13 +157,5 @@ export type ClientMessages = {
     },
     { success: true }
   ];
-  textMessage: [
-    {
-      callId: string;
-      contents: string;
-    },
-    { success: true }
-  ];
-  terminate: [Record<string, never>, { success: true }];
   connectionState: [ConnectionState, { success: true }];
 };
