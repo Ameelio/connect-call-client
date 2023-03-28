@@ -387,35 +387,30 @@ class RoomClient {
       this.emitter.emit("onTextMessage", { user: from, contents });
     });
 
-    client.on("userStatus", (statusUpdates) => {
-      const knownStatusUpdates = statusUpdates.map(({ user, status }) => ({
-        user,
-        status: status.filter((x) =>
-          (Object.values(UserStatus) as string[]).includes(x)
-        ) as UserStatus[],
-      }));
-
-      knownStatusUpdates.forEach(({ user, status }) => {
-        if (user.id === this.user.id) {
-          this.user.status = status;
-          this.emitter.emit("onUserUpdate", this.user);
-          this.checkLocalMute();
+    client.on("userStatus", (statusUpdate) => {
+      const user = statusUpdate.user;
+      const status = statusUpdate.status.filter((x) =>
+        (Object.values(UserStatus) as string[]).includes(x)
+      ) as UserStatus[];
+      if (user.id === this.user.id) {
+        this.user.status = status;
+        this.emitter.emit("onUserUpdate", this.user);
+        this.checkLocalMute();
+      } else {
+        if (user.id in this.peers) {
+          this.peers[user.id].status = status;
         } else {
-          if (user.id in this.peers) {
-            this.peers[user.id].status = status;
-          } else {
-            this.peers[user.id] = {
-              user,
-              consumers: {},
-              stream: new MediaStream(),
-              screenshareStream: new MediaStream(),
-              status: status,
-              connectionState: { quality: "unknown", ping: NaN },
-            };
-          }
-          this.emitter.emit("onPeerUpdate", this.peers[user.id]);
+          this.peers[user.id] = {
+            user,
+            consumers: {},
+            stream: new MediaStream(),
+            screenshareStream: new MediaStream(),
+            status: status,
+            connectionState: { quality: "unknown", ping: NaN },
+          };
         }
-      });
+        this.emitter.emit("onPeerUpdate", this.peers[user.id]);
+      }
     });
 
     client.on("timer", ({ name, msRemaining, msElapsed }) => {
