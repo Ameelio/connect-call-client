@@ -90,7 +90,7 @@ export type ServerMessages = {
     // forward-compatibility because it is used in connect-mobile.
     // We will ignore statuses that we don't know about.
     status: (UserStatus | string)[];
-  }[];
+  };
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   peerConnectionState: { from: Participant } & ConnectionState;
 };
