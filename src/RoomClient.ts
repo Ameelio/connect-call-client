@@ -26,17 +26,17 @@ const config: Record<MediaKind, ProducerOptions> = {
         rid: "r0",
         maxBitrate: 50000,
         maxFramerate: 10,
-        scalabilityMode: "S1T3",
+        scalabilityMode: "L1T3",
       },
       {
         rid: "r1",
         maxBitrate: 300000,
-        scalabilityMode: "S1T3",
+        scalabilityMode: "L1T3",
       },
       {
         rid: "r2",
         maxBitrate: 900000,
-        scalabilityMode: "S1T3",
+        scalabilityMode: "L1T3",
       },
     ],
     codecOptions: {

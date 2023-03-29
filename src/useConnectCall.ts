@@ -228,9 +228,19 @@ const useConnectCall = ({
     [setConnectionState, localVideo]
   );
 
+  const [debounceReady, setDebounceReady] = useState(false);
+
+  useEffect(() => {
+    const debounceTimeout = setTimeout(() => {
+      setDebounceReady(true);
+    }, 10);
+    return () => clearTimeout(debounceTimeout);
+  }, []);
+
   // create a client for the call
   useEffect(() => {
     if (call?.id === undefined) return;
+    if (!debounceReady) return;
     RoomClient.connect({
       id: call.id,
       url: call.url,
@@ -241,7 +251,7 @@ const useConnectCall = ({
         setTrackedUser(client.user);
       })
       .catch(handleError);
-  }, [call?.id, call?.url, call?.token]);
+  }, [call?.id, call?.url, call?.token, debounceReady]);
 
   const disconnect = useCallback(async () => {
     if (!client) return;
