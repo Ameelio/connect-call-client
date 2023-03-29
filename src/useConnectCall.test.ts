@@ -120,7 +120,7 @@ describe("useConnectCall", () => {
       result.current.produceTrack(track, ProducerLabel.video)
     );
     expect(result.current.localVideo).toBeTruthy();
-    if (!result.current.localVidio) throw new Error("type narrowing");
+    if (!result.current.localVideo) throw new Error("type narrowing");
 
     // toggle
     expect(result.current.localVideo.paused).toBe(false);
