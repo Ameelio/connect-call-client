@@ -89,11 +89,13 @@ describe("useConnectCall", () => {
     );
     expect(result.current.localAudio).toBeTruthy();
 
-    expect(result.current.localAudio!.paused).toBe(false);
+    if (!result.current.localAudio) throw new Error("type narrowing");
+
+    expect(result.current.localAudio.paused).toBe(false);
     await actHook(() => result.current.toggleAudio());
-    expect(result.current.localAudio!.paused).toBe(true);
+    expect(result.current.localAudio.paused).toBe(true);
     await actHook(() => result.current.toggleAudio());
-    expect(result.current.localAudio!.paused).toBe(false);
+    expect(result.current.localAudio.paused).toBe(false);
   });
 
   it("produces and toggles video", async () => {
@@ -118,6 +120,7 @@ describe("useConnectCall", () => {
       result.current.produceTrack(track, ProducerLabel.video)
     );
     expect(result.current.localVideo).toBeTruthy();
+    if (!result.current.localVidio) throw new Error("type narrowing");
 
     // toggle
     expect(result.current.localVideo!.paused).toBe(false);
@@ -168,6 +171,7 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`Array []`);
 
     act(() =>
+      // eslint=disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "audio" } as any)
     );
     await waitFor(() => expect(result.current.peers).toHaveLength(1));
@@ -200,6 +204,7 @@ describe("useConnectCall", () => {
     `);
 
     act(() =>
+      // eslint=disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "video" } as any)
     );
     await waitFor(() =>
@@ -241,6 +246,7 @@ describe("useConnectCall", () => {
         from: user,
         paused: true,
         type: "video",
+        // eslint=disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     );
     await waitFor(() =>
@@ -299,9 +305,11 @@ describe("useConnectCall", () => {
     await waitFor(() => expect(result.current.status).toBe("connected"));
 
     await act(async () =>
+      // eslint=disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "audio" } as any)
     );
     await act(async () =>
+      // eslint=disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "video" } as any)
     );
 

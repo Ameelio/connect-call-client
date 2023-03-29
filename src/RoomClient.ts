@@ -316,35 +316,32 @@ class RoomClient {
     });
 
     // listen for tracks pausing and resuming
-    client.on(
-      "producerUpdate",
-      async ({ from, paused, type, label, reason }) => {
-        const peer = this.peers[from.id];
-        if (!peer) throw new Error(`Unknown peer update ${from.id}`);
-        const track = peer.consumers[label]?.track;
-        if (track) {
-          if (label === ProducerLabel.screenshare) {
-            if (paused) {
-              peer.screenshareStream.removeTrack(track);
-            } else {
-              peer.screenshareStream.addTrack(track);
-            }
+    client.on("producerUpdate", async ({ from, paused, label, reason }) => {
+      const peer = this.peers[from.id];
+      if (!peer) throw new Error(`Unknown peer update ${from.id}`);
+      const track = peer.consumers[label]?.track;
+      if (track) {
+        if (label === ProducerLabel.screenshare) {
+          if (paused) {
+            peer.screenshareStream.removeTrack(track);
           } else {
-            if (paused) {
-              peer.stream.removeTrack(track);
-            } else {
-              peer.stream.addTrack(track);
-            }
+            peer.screenshareStream.addTrack(track);
+          }
+        } else {
+          if (paused) {
+            peer.stream.removeTrack(track);
+          } else {
+            peer.stream.addTrack(track);
           }
         }
-        if (!paused) {
-          peer.connectionState.videoDisabled = false;
-        } else if (reason === "paused_video_bad_connection") {
-          peer.connectionState.videoDisabled = true;
-        }
-        this.emitter.emit("onPeerUpdate", peer);
       }
-    );
+      if (!paused) {
+        peer.connectionState.videoDisabled = false;
+      } else if (reason === "paused_video_bad_connection") {
+        peer.connectionState.videoDisabled = true;
+      }
+      this.emitter.emit("onPeerUpdate", peer);
+    });
 
     // listen for tracks going away
     client.on("producerClose", async ({ from, label }) => {

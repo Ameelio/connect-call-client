@@ -108,13 +108,13 @@ export type ClientMessages = {
     }
   ];
   textMessage: [{ contents: string }, { success: true }];
-  terminate: [{}, { success: true }];
+  terminate: [Record<string, never>, { success: true }];
   remoteAudioMute: [{ targetUserId: string }, { success: true }];
   remoteAudioUnmute: [{ targetUserId: string }, { success: true }];
   remoteVideoMute: [{ targetUserId: string }, { success: true }];
   remoteVideoUnmute: [{ targetUserId: string }, { success: true }];
-  raiseHand: [{}, { success: true }];
-  lowerHand: [{}, { success: true }];
+  raiseHand: [Record<string, never>, { success: true }];
+  lowerHand: [Record<string, never>, { success: true }];
   remoteLowerHand: [{ targetUserId: string }, { success: true }];
   declareRtpCapabilities: [
     { rtpCapabilities: RtpCapabilities },

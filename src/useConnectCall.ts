@@ -131,7 +131,6 @@ const useConnectCall = ({
 
   const handleProducerUpdate = ({
     paused,
-    type,
     label,
   }: {
     paused: boolean;
@@ -348,14 +347,14 @@ const useConnectCall = ({
     if (localAudio?.paused === undefined)
       throw new Error("Not producing audio");
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
-  }, [client, localAudio?.paused, setLocalAudio]);
+  }, [client, localAudio?.paused]);
 
   const toggleVideo = useCallback(async () => {
     if (!client) throw new Error("Not connected");
     if (localVideo?.paused === undefined)
       throw new Error("Not producing video");
     localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
-  }, [client, localVideo?.paused, setLocalVideo]);
+  }, [client, localVideo?.paused]);
 
   // Operations
   const terminateCall = useCallback(async () => {
