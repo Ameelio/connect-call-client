@@ -137,15 +137,15 @@ const useConnectCall = ({
     type: MediaKind;
     label: ProducerLabel;
   }) => {
-    if (label === "video") {
+    if (label === ProducerLabel.video) {
       setLocalVideo((existing) =>
         existing ? { ...existing, paused } : undefined
       );
-    } else if (label === "screenshare") {
+    } else if (label === ProducerLabel.screenshare) {
       setLocalScreenshare((existing) =>
         existing ? { ...existing, paused } : undefined
       );
-    } else if (label === "audio") {
+    } else if (label === ProducerLabel.audio) {
       setLocalAudio((existing) =>
         existing ? { ...existing, paused } : undefined
       );
