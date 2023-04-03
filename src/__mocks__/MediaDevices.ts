@@ -1,4 +1,5 @@
 export default {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getUserMedia: (constraints: { audio: any } | { video: any }) => {
     if ("audio" in constraints) {
       return { id: "audio", getAudioTracks: () => [{ kind: "audio" }] };

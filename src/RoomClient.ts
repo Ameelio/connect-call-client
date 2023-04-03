@@ -8,7 +8,14 @@ import {
   Transport,
 } from "mediasoup-client/lib/types";
 import mitt, { Emitter } from "mitt";
-import { CallStatus, Participant, PRODUCER_UPDATE_REASONS } from "./API";
+import {
+  CallStatus,
+  Participant,
+  ProducerLabel,
+  PRODUCER_UPDATE_REASONS,
+  Role,
+  UserStatus,
+} from "./API";
 import Client from "./Client";
 import { Quality } from "./ConnectionMonitor";
 
@@ -42,7 +49,9 @@ const config: Record<MediaKind, ProducerOptions> = {
 export type Peer = {
   user: Participant;
   stream: MediaStream;
+  screenshareStream: MediaStream;
   connectionState: ConnectionState;
+  status: UserStatus[];
 };
 
 export interface VideoState {
@@ -63,9 +72,20 @@ export interface ConnectionState {
 
 type Events = {
   onStatusChange: CallStatus;
+  onUserUpdate: {
+    id: string;
+    role: Role;
+    status: UserStatus[];
+  };
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
+  onProducerUpdate: {
+    producerId: string;
+    paused: boolean;
+    type: MediaKind;
+    label: ProducerLabel;
+  };
   onTextMessage: { user: Participant; contents: string };
   onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   onConnectionState: ConnectionState;
@@ -73,11 +93,22 @@ type Events = {
 };
 
 class RoomClient {
-  private producers: Partial<Record<MediaKind, Producer>> = {};
+  producers: Partial<Record<ProducerLabel, Producer>> = {};
   private peers: Record<
     string,
-    Peer & { consumers: Partial<Record<MediaKind, Consumer>> }
+    Peer & {
+      consumers: Partial<Record<ProducerLabel, Consumer>>;
+    }
   > = {};
+  public user: {
+    id: string;
+    role: Role;
+    status: UserStatus[];
+  };
+  private callId: string;
+  private client: Client;
+  private producerTransport: Transport | null;
+  private consumerTransport: Transport;
   private emitter: Emitter<Events>;
   private connectionState: ConnectionState = {
     quality: "unknown",
@@ -96,6 +127,8 @@ class RoomClient {
     // Request to join the room.
     const {
       role,
+      userId,
+      status,
       producerTransportInfo,
       consumerTransportInfo,
       routerRtpCapabilities,
@@ -146,22 +179,45 @@ class RoomClient {
       rtpCapabilities: device.rtpCapabilities,
     });
 
-    return new RoomClient(
-      call.id,
+    return new RoomClient({
+      callId: call.id,
       client,
       producerTransport,
       consumerTransport,
-      role
-    );
+      role,
+      userId,
+      status,
+    });
   }
 
-  protected constructor(
-    private callId: string,
-    private client: Client,
-    private producerTransport: Transport | null,
-    private consumerTransport: Transport,
-    public role: Participant["role"]
-  ) {
+  protected constructor({
+    callId,
+    client,
+    producerTransport,
+    consumerTransport,
+    role,
+    userId,
+    status,
+  }: {
+    callId: string;
+    client: Client;
+    producerTransport: Transport | null;
+    consumerTransport: Transport;
+    role: Participant["role"];
+    userId: string;
+    status: UserStatus[];
+  }) {
+    this.callId = callId;
+    this.client = client;
+    this.producerTransport = producerTransport;
+    this.consumerTransport = consumerTransport;
+
+    this.user = {
+      id: userId,
+      status,
+      role,
+    };
+
     this.emitter = mitt();
     client.connectionMonitor.start();
     client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
@@ -186,7 +242,7 @@ class RoomClient {
         videoDisabled,
       };
       this.emitter.emit("onConnectionState", this.connectionState);
-      if (this.role === "participant")
+      if (this.user.role !== "monitor")
         // we don't emit videoDisabled, but let producerUpdate pass the reason,
         // and allow peers' CCC to set videoDisabled
         client.emit("connectionState", {
@@ -199,18 +255,41 @@ class RoomClient {
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
     producerTransport?.on(
       "produce",
-      async ({ kind, rtpParameters }, callback) => {
+      async ({ appData, kind, rtpParameters }, callback) => {
+        // TODO this event will need to inform the server
+        // about whether this is a screenshare stream
         const { producerId } = await client.emit("produce", {
           callId: this.callId,
           kind,
           rtpParameters,
+          label: appData.label,
         });
 
         callback({ id: producerId });
       }
     );
 
+    // Listen for new joiners
+    client.on("joined", async ({ id, role, status }) => {
+      if (!this.peers[id]) {
+        this.peers[id] = {
+          user: { id, role },
+          consumers: {},
+          stream: new MediaStream(),
+          screenshareStream: new MediaStream(),
+          status,
+          connectionState: { quality: "unknown", ping: NaN },
+        };
+        this.emitter.emit("onPeerConnect", { id, role });
+      }
+
+      this.peers[id].status = status;
+      this.emitter.emit("onPeerUpdate", this.peers[id]);
+    });
+
     // listen for new peer tracks from the server
+    // TODO this event will need to distinguish between types of video stream
+    // (screenshare vs camera)
     client.on("consume", async ({ user, ...options }) => {
       const consumer = await consumerTransport.consume(options);
 
@@ -219,29 +298,69 @@ class RoomClient {
           user,
           consumers: {},
           stream: new MediaStream(),
+          screenshareStream: new MediaStream(),
+          status: [],
           connectionState: { quality: "unknown", ping: NaN },
         };
         this.emitter.emit("onPeerConnect", user);
       }
 
-      this.peers[user.id].consumers[options.kind] = consumer;
-      this.peers[user.id].stream.addTrack(consumer.track);
+      this.peers[user.id].consumers[options.label] = consumer;
+      // Screenshare goes in a different stream
+      if (options.label === ProducerLabel.screenshare) {
+        this.peers[user.id].screenshareStream.addTrack(consumer.track);
+      } else {
+        this.peers[user.id].stream.addTrack(consumer.track);
+      }
       this.emitter.emit("onPeerUpdate", this.peers[user.id]);
     });
 
     // listen for tracks pausing and resuming
-    client.on("producerUpdate", async ({ from, paused, type, reason }) => {
+    client.on("producerUpdate", async ({ from, paused, label, reason }) => {
       const peer = this.peers[from.id];
       if (!peer) throw new Error(`Unknown peer update ${from.id}`);
-      const track = peer.consumers[type]?.track;
+      const track = peer.consumers[label]?.track;
       if (track) {
-        paused ? peer.stream.removeTrack(track) : peer.stream.addTrack(track);
+        if (label === ProducerLabel.screenshare) {
+          if (paused) {
+            peer.screenshareStream.removeTrack(track);
+          } else {
+            peer.screenshareStream.addTrack(track);
+          }
+        } else {
+          if (paused) {
+            peer.stream.removeTrack(track);
+          } else {
+            peer.stream.addTrack(track);
+          }
+        }
       }
       if (!paused) {
         peer.connectionState.videoDisabled = false;
       } else if (reason === "paused_video_bad_connection") {
         peer.connectionState.videoDisabled = true;
       }
+      this.emitter.emit("onPeerUpdate", peer);
+    });
+
+    // listen for tracks going away
+    client.on("producerClose", async ({ from, label }) => {
+      const peer = this.peers[from.id];
+      if (!peer) throw new Error(`Unknown peer update ${from.id}`);
+      const consumer = peer.consumers[label];
+      if (!consumer) return;
+
+      consumer.close();
+
+      const track = consumer.track;
+      if (track) {
+        if (label === ProducerLabel.screenshare) {
+          peer.screenshareStream.removeTrack(track);
+        } else {
+          peer.stream.removeTrack(track);
+        }
+      }
+      delete peer.consumers[label];
       this.emitter.emit("onPeerUpdate", peer);
     });
 
@@ -265,6 +384,32 @@ class RoomClient {
       this.emitter.emit("onTextMessage", { user: from, contents });
     });
 
+    client.on("userStatus", (statusUpdate) => {
+      const user = statusUpdate.user;
+      const status = statusUpdate.status.filter((x) =>
+        (Object.values(UserStatus) as string[]).includes(x)
+      ) as UserStatus[];
+      if (user.id === this.user.id) {
+        this.user.status = status;
+        this.emitter.emit("onUserUpdate", this.user);
+        this.checkLocalMute();
+      } else {
+        if (user.id in this.peers) {
+          this.peers[user.id].status = status;
+        } else {
+          this.peers[user.id] = {
+            user,
+            consumers: {},
+            stream: new MediaStream(),
+            screenshareStream: new MediaStream(),
+            status: status,
+            connectionState: { quality: "unknown", ping: NaN },
+          };
+        }
+        this.emitter.emit("onPeerUpdate", this.peers[user.id]);
+      }
+    });
+
     client.on("timer", ({ name, msRemaining, msElapsed }) => {
       this.emitter.emit("onTimer", { name, msRemaining, msElapsed });
     });
@@ -278,7 +423,7 @@ class RoomClient {
       }
     });
 
-    if (this.role === "monitor") {
+    if (this.user.role === "monitor") {
       this.heartbeat = setInterval(() => {
         client.emit("heartbeat", {});
       }, 1000);
@@ -296,22 +441,53 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
-  async produce(track: MediaStreamTrack): Promise<void> {
-    const type = track.kind as "audio" | "video";
+  async produce(track: MediaStreamTrack, label: ProducerLabel): Promise<void> {
     if (!this.producerTransport)
       throw new Error(`RoomClient is not able to produce media`);
-    if (this.producers[type])
-      throw new Error(`RoomClient is already producing ${type}`);
+    if (this.producers[label])
+      throw new Error(`RoomClient is already producing ${label}`);
 
     const producer = await this.producerTransport.produce({
-      ...config[type],
+      ...config[track.kind as MediaKind],
       track,
+      appData: { label },
     });
-    this.producers[type] = producer;
+
+    this.producers[label] = producer;
   }
 
-  async terminate() {
-    await this.client.emit("terminate", {});
+  async closeProducer(label: ProducerLabel): Promise<void> {
+    const producer = this.producers[label];
+
+    if (!producer) return;
+
+    await producer.close();
+    await this.client.emit("producerClose", {
+      callId: this.callId,
+      producerId: producer.id,
+    });
+    delete this.producers[label];
+  }
+
+  async checkLocalMute() {
+    // If we are now remote muted but not locally muted,
+    // locally mute.
+    if (
+      this.user.status.includes(UserStatus.AudioMutedByServer) &&
+      this.producers.audio &&
+      !this.producers.audio.paused
+    ) {
+      this.pauseAudio();
+    }
+
+    // Same with video mute
+    if (
+      this.user.status.includes(UserStatus.VideoMutedByServer) &&
+      this.producers.video &&
+      !this.producers.video.paused
+    ) {
+      this.pauseVideo();
+    }
   }
 
   async pauseVideo(reason?: PRODUCER_UPDATE_REASONS) {
@@ -321,6 +497,8 @@ class RoomClient {
 
   async resumeVideo() {
     if (!this.producers.video) return;
+    // Do not allow resuming video when remote video muted
+    if (this.user.status.includes(UserStatus.VideoMutedByServer)) return;
     await this.updateProducer(this.producers.video, false);
   }
 
@@ -331,11 +509,61 @@ class RoomClient {
 
   async resumeAudio() {
     if (!this.producers.audio) return;
+    // Do not allow resuming audio when remote muted
+    if (this.user.status.includes(UserStatus.AudioMutedByServer)) return;
     await this.updateProducer(this.producers.audio, false);
   }
 
+  async terminate() {
+    await this.client.emit("terminate", {});
+  }
+
+  async textMessage(contents: string) {
+    await this.client.emit("textMessage", {
+      contents,
+    });
+  }
+
+  async remoteAudioMute(targetUserId: string) {
+    await this.client.emit("remoteAudioMute", {
+      targetUserId,
+    });
+  }
+
+  async remoteAudioUnmute(targetUserId: string) {
+    await this.client.emit("remoteAudioUnmute", {
+      targetUserId,
+    });
+  }
+
+  async remoteVideoMute(targetUserId: string) {
+    await this.client.emit("remoteVideoMute", {
+      targetUserId,
+    });
+  }
+
+  async remoteVideoUnmute(targetUserId: string) {
+    await this.client.emit("remoteVideoUnmute", {
+      targetUserId,
+    });
+  }
+
+  async remoteLowerHand(targetUserId: string) {
+    await this.client.emit("remoteLowerHand", {
+      targetUserId,
+    });
+  }
+
+  async raiseHand() {
+    await this.client.emit("raiseHand", {});
+  }
+
+  async lowerHand() {
+    await this.client.emit("lowerHand", {});
+  }
+
   async sendMessage(contents: string) {
-    await this.client.emit("textMessage", { callId: this.callId, contents });
+    await this.textMessage(contents);
   }
 
   async close() {
@@ -345,6 +573,7 @@ class RoomClient {
     this.producerTransport?.close();
     this.producers.audio?.close();
     this.producers.video?.close();
+    this.producers.screenshare?.close();
     this.emitter.all.clear();
     this.client.connectionMonitor.stop();
     Object.values(this.peers).forEach((peer) => {
@@ -359,10 +588,17 @@ class RoomClient {
     reason?: PRODUCER_UPDATE_REASONS
   ) {
     paused ? producer.pause() : producer.resume();
+    this.emitter.emit("onProducerUpdate", {
+      producerId: producer.id,
+      paused,
+      label: producer.appData.label,
+      type: producer.kind as MediaKind,
+    });
     await this.client.emit("producerUpdate", {
       callId: this.callId,
       producerId: producer.id,
       paused,
+      label: producer.appData.label,
       type: producer.kind as MediaKind,
       ...(reason ? { reason: reason } : {}),
     });

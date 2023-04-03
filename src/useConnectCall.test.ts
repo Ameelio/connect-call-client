@@ -1,7 +1,8 @@
 import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
-import { act as actHook, renderHook } from "@testing-library/react-hooks";
+import { act as actHook, renderHook } from "@testing-library/react-hooks/pure";
 import { advanceTo } from "jest-date-mock";
+import { ProducerLabel, Role } from "./API";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
 import useConnectCall from "./useConnectCall";
@@ -33,7 +34,7 @@ const call = {
 const user = {
   id: "1",
   type: "inmate" as const,
-  role: "participant" as const,
+  role: Role.visitParticipant,
   token: "T2",
   detail: undefined,
 };
@@ -83,15 +84,18 @@ describe("useConnectCall", () => {
     const track = (
       await navigator.mediaDevices.getUserMedia({ audio: true })
     ).getAudioTracks()[0];
-    act;
-    await actHook(() => result.current.produceTrack(track));
+    await actHook(() =>
+      result.current.produceTrack(track, ProducerLabel.audio)
+    );
     expect(result.current.localAudio).toBeTruthy();
 
-    expect(result.current.localAudio!.paused).toBe(false);
+    if (!result.current.localAudio) throw new Error("type narrowing");
+
+    expect(result.current.localAudio.paused).toBe(false);
     await actHook(() => result.current.toggleAudio());
-    expect(result.current.localAudio!.paused).toBe(true);
+    expect(result.current.localAudio.paused).toBe(true);
     await actHook(() => result.current.toggleAudio());
-    expect(result.current.localAudio!.paused).toBe(false);
+    expect(result.current.localAudio.paused).toBe(false);
   });
 
   it("produces and toggles video", async () => {
@@ -112,15 +116,18 @@ describe("useConnectCall", () => {
       await navigator.mediaDevices.getUserMedia({ video: true })
     ).getVideoTracks()[0];
     act;
-    await actHook(() => result.current.produceTrack(track));
+    await actHook(() =>
+      result.current.produceTrack(track, ProducerLabel.video)
+    );
     expect(result.current.localVideo).toBeTruthy();
+    if (!result.current.localVideo) throw new Error("type narrowing");
 
     // toggle
-    expect(result.current.localVideo!.paused).toBe(false);
+    expect(result.current.localVideo.paused).toBe(false);
     await actHook(() => result.current.toggleVideo());
-    expect(result.current.localVideo!.paused).toBe(true);
+    expect(result.current.localVideo.paused).toBe(true);
     await actHook(() => result.current.toggleVideo());
-    expect(result.current.localVideo!.paused).toBe(false);
+    expect(result.current.localVideo.paused).toBe(false);
   });
 
   it("tracks call status changes", async () => {
@@ -145,7 +152,7 @@ describe("useConnectCall", () => {
     const user = {
       id: "USER-01",
       type: "user" as const,
-      role: "participant" as const,
+      role: Role.visitParticipant,
       detail: undefined,
     };
 
@@ -164,6 +171,7 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`Array []`);
 
     act(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "audio" } as any)
     );
     await waitFor(() => expect(result.current.peers).toHaveLength(1));
@@ -174,6 +182,10 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
+          "screenshareStream": MediaStream {
+            "tracks": Array [],
+          },
+          "status": Array [],
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -184,7 +196,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": "participant",
+            "role": "visitParticipant",
             "type": "user",
           },
         },
@@ -192,6 +204,7 @@ describe("useConnectCall", () => {
     `);
 
     act(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "video" } as any)
     );
     await waitFor(() =>
@@ -204,6 +217,10 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
+          "screenshareStream": MediaStream {
+            "tracks": Array [],
+          },
+          "status": Array [],
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -217,7 +234,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": "participant",
+            "role": "visitParticipant",
             "type": "user",
           },
         },
@@ -229,6 +246,7 @@ describe("useConnectCall", () => {
         from: user,
         paused: true,
         type: "video",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     );
     await waitFor(() =>
@@ -241,6 +259,10 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
+          "screenshareStream": MediaStream {
+            "tracks": Array [],
+          },
+          "status": Array [],
           "stream": MediaStream {
             "tracks": Array [
               Object {
@@ -251,7 +273,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
-            "role": "participant",
+            "role": "visitParticipant",
             "type": "user",
           },
         },
@@ -267,7 +289,7 @@ describe("useConnectCall", () => {
     const user = {
       id: "USER-01",
       type: "user" as const,
-      role: "participant" as const,
+      role: Role.visitParticipant,
       detail: undefined,
     };
 
@@ -283,9 +305,11 @@ describe("useConnectCall", () => {
     await waitFor(() => expect(result.current.status).toBe("connected"));
 
     await act(async () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "audio" } as any)
     );
     await act(async () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       client.sendServerEvent("consume", { user, kind: "video" } as any)
     );
 
@@ -302,7 +326,7 @@ describe("useConnectCall", () => {
     const user = {
       id: "USER-01",
       type: "user" as const,
-      role: "participant" as const,
+      role: Role.visitParticipant,
       detail: undefined,
     };
 
@@ -336,7 +360,7 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", role: "participant", detail: undefined },
+        from: { id: "2", role: Role.visitParticipant, detail: undefined },
         contents: "first",
       });
     });
@@ -350,7 +374,7 @@ describe("useConnectCall", () => {
           "user": Object {
             "detail": undefined,
             "id": "2",
-            "role": "participant",
+            "role": "visitParticipant",
           },
         },
       ]
@@ -377,7 +401,7 @@ describe("useConnectCall", () => {
           "timestamp": 2021-11-23T12:34:56.789Z,
           "user": Object {
             "id": "1",
-            "role": "participant",
+            "role": "visitParticipant",
           },
         },
       ]
@@ -398,13 +422,13 @@ describe("useConnectCall", () => {
 
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", role: "participant", detail: undefined },
+        from: { id: "2", role: Role.visitParticipant, detail: undefined },
         contents: "first",
       });
     });
     act(() => {
       client.sendServerEvent("textMessage", {
-        from: { id: "2", role: "participant", detail: undefined },
+        from: { id: "2", role: Role.visitParticipant, detail: undefined },
         contents: "second",
       });
     });

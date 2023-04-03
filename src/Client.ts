@@ -27,6 +27,7 @@ export default class Client {
     name: E,
     handler: (data: ServerMessages[E]) => void
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.socket.on(name, handler as any);
   }
 
@@ -34,6 +35,7 @@ export default class Client {
     name: E,
     handler?: (data: ServerMessages[E]) => void
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.socket.off(name, handler as any);
   }
 
