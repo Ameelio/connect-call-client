@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
 import { act as actHook, renderHook } from "@testing-library/react-hooks/pure";
 import { advanceTo } from "jest-date-mock";
-import { ProducerLabel, Role } from "./API";
+import { ProducerLabel, Role, UserStatus } from "./API";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
 import useConnectCall from "./useConnectCall";
@@ -45,6 +45,7 @@ describe("useConnectCall", () => {
   let client: ReturnType<typeof clientFactory>;
   beforeEach(() => {
     client = clientFactory();
+    (Client.connect as jest.Mock).mockClear();
     (Client.connect as jest.Mock).mockReturnValue(client);
     onPeerConnected.mockClear();
     onPeerDisconnected.mockClear();
@@ -65,6 +66,68 @@ describe("useConnectCall", () => {
     expect(result.current.status).toBe("initializing");
 
     await waitFor(() => expect(result.current.status).toBe("connected"));
+  });
+
+  it("receives joined events", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({
+        call,
+        user,
+        onPeerConnected,
+        onPeerDisconnected,
+        onNewMessage,
+      })
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+    act(() =>
+      client.sendServerEvent("joined", {
+        id: "test-id",
+        role: Role.webinarAttendee,
+        status: [UserStatus.AudioMutedByServer],
+        callId: call.id,
+      })
+    );
+
+    await waitFor(() => expect(result.current.peers).toHaveLength(1));
+    await waitFor(() =>
+      expect(result.current.peers[0].status).toEqual([
+        UserStatus.AudioMutedByServer,
+      ])
+    );
+  });
+
+  it("receives fast joined events", async () => {
+    const { result } = renderHook(() =>
+      useConnectCall({
+        call,
+        user,
+        onPeerConnected,
+        onPeerDisconnected,
+        onNewMessage,
+      })
+    );
+
+    await waitFor(() =>
+      expect((Client.connect as jest.Mock).mock.calls).toHaveLength(1)
+    );
+    expect(result.current.status).toBe("initializing");
+    act(() =>
+      client.sendServerEvent("joined", {
+        id: "test-id",
+        role: Role.webinarAttendee,
+        status: [UserStatus.AudioMutedByServer],
+        callId: call.id,
+      })
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+    await waitFor(() => expect(result.current.peers).toHaveLength(1));
+    await waitFor(() =>
+      expect(result.current.peers[0].status).toEqual([
+        UserStatus.AudioMutedByServer,
+      ])
+    );
   });
 
   it("produces and toggles audio", async () => {

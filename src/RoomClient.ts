@@ -645,6 +645,10 @@ class RoomClient {
       ...(reason ? { reason: reason } : {}),
     });
   }
+
+  getPeers() {
+    return Object.values(this.peers);
+  }
 }
 
 export default RoomClient;
