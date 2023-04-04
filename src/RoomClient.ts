@@ -271,6 +271,7 @@ class RoomClient {
 
     // Listen for new joiners
     client.on("joined", async ({ id, role, status }) => {
+      console.log("Got joined event", id, role, status);
       if (!this.peers[id]) {
         this.peers[id] = {
           user: { id, role },
@@ -294,6 +295,7 @@ class RoomClient {
       const consumer = await consumerTransport.consume(options);
 
       if (!this.peers[user.id]) {
+        console.log("Got consume event", user);
         this.peers[user.id] = {
           user,
           consumers: {},
