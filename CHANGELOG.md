@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2023-04-05
+
 - fix race condition affecting registering of peers when joining a call
 - support for CVH v7 API including remote muting and screen sharing
 
