@@ -248,6 +248,7 @@ const useConnectCall = ({
     })
       .then((client) => {
         setClient(client);
+        setPeers(client.getPeers());
         setTrackedUser(client.user);
       })
       .catch(handleError);
