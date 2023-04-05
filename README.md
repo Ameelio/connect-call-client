@@ -25,11 +25,12 @@ Due to issues with `npm link` and nested node_modules/, it's recommendeded to bu
 ## Releasing
 
 1. Review `CHANGELOG.md` and determine the next semantic version
-2. Commit a change to `package.json` and `CHANGELOG.md` with the next version. Push the commit.
-3. Tag the commit. Push tags.
-4. Run `npm publish` to synchronize with NPM
-5. Reflect on how NPM doesn't have any mechanism to verify your package contents
-6. Marvel at how software works as often as it does
+2. Commit a change to `CHANGELOG.md` with the next version.
+3. Run `npm version X.Y.Z` to update `package.json` and create a new tag.
+4. Push the commit. Push tags.
+5. Run `npm publish` to synchronize with NPM
+6. Reflect on how NPM doesn't have any mechanism to verify your package contents
+7. Marvel at how software works as often as it does
 
 ## Contributing
 
