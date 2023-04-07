@@ -164,7 +164,6 @@ const useConnectCall = ({
     pausedStates,
     status,
   }: Peer) => {
-    console.log("handling peer update", user, status);
     setPeers((peers) => {
       return [
         ...peers.filter((p) => p.user.id !== user.id),

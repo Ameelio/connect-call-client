@@ -228,12 +228,10 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    console.log(result.current.peers);
 
     await waitFor(() => expect(result.current.status).toBe("connected"));
 
     expect(result.current.peers).toMatchInlineSnapshot(`Array []`);
-    console.log(result.current.peers);
 
     act(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -244,7 +242,6 @@ describe("useConnectCall", () => {
         paused: false,
       } as any)
     );
-    console.log(result.current.peers);
     await waitFor(() => expect(result.current.peers).toHaveLength(1));
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
