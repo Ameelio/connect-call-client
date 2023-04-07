@@ -332,7 +332,7 @@ class RoomClient {
     // listen for new peer tracks from the server
     // TODO this event will need to distinguish between types of video stream
     // (screenshare vs camera)
-    client.on("consume", async ({ user, ...options }) => {
+    client.on("consume", async ({ user, paused, ...options }) => {
       const consumer = await consumerTransport.consume(options);
 
       if (!this.peers[user.id]) {
@@ -348,11 +348,13 @@ class RoomClient {
       }
 
       this.peers[user.id].consumers[options.label] = consumer;
-      // Screenshare goes in a different stream
-      if (options.label === ProducerLabel.screenshare) {
-        this.peers[user.id].screenshareStream.addTrack(consumer.track);
-      } else {
-        this.peers[user.id].stream.addTrack(consumer.track);
+      if (!paused) {
+        // Screenshare goes in a different stream
+        if (options.label === ProducerLabel.screenshare) {
+          this.peers[user.id].screenshareStream.addTrack(consumer.track);
+        } else {
+          this.peers[user.id].stream.addTrack(consumer.track);
+        }
       }
       this.emitter.emit("onPeerUpdate", this.peers[user.id]);
     });
