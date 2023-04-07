@@ -50,7 +50,7 @@ export type Peer = {
   user: Participant;
   stream: MediaStream;
   screenshareStream: MediaStream;
-  pausedStates: { [label: ParticipantLabel]: boolean };
+  pausedStates: Partial<Record<ProducerLabel, boolean>>;
   connectionState: ConnectionState;
   status: UserStatus[];
 };
@@ -279,6 +279,7 @@ class RoomClient {
           stream: new MediaStream(),
           screenshareStream: new MediaStream(),
           status,
+          pausedStates: {},
           connectionState: { quality: "unknown", ping: NaN },
         };
         this.emitter.emit("onPeerConnect", { id, role });
@@ -408,6 +409,7 @@ class RoomClient {
             stream: new MediaStream(),
             screenshareStream: new MediaStream(),
             status: status,
+            pausedStates: {},
             connectionState: { quality: "unknown", ping: NaN },
           };
         }
