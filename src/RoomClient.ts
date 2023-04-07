@@ -50,6 +50,7 @@ export type Peer = {
   user: Participant;
   stream: MediaStream;
   screenshareStream: MediaStream;
+  pausedStates: { [label: ParticipantLabel]: boolean };
   connectionState: ConnectionState;
   status: UserStatus[];
 };
@@ -299,6 +300,7 @@ class RoomClient {
           consumers: {},
           stream: new MediaStream(),
           screenshareStream: new MediaStream(),
+          pausedStates: {},
           status: [],
           connectionState: { quality: "unknown", ping: NaN },
         };
@@ -306,6 +308,7 @@ class RoomClient {
       }
 
       this.peers[user.id].consumers[options.label] = consumer;
+      this.peers[user.id].pausedStates[options.label] = paused;
       // Screenshare goes in a different stream
       if (options.label === ProducerLabel.screenshare) {
         this.peers[user.id].screenshareStream.addTrack(consumer.track);
@@ -320,6 +323,7 @@ class RoomClient {
       const peer = this.peers[from.id];
       if (!peer) throw new Error(`Unknown peer update ${from.id}`);
       const track = peer.consumers[label]?.track;
+      peer.pausedStates[label] = paused;
       if (track) {
         if (label === ProducerLabel.screenshare) {
           if (paused) {
@@ -361,6 +365,7 @@ class RoomClient {
         }
       }
       delete peer.consumers[label];
+      delete peer.pausedStates[label];
       this.emitter.emit("onPeerUpdate", peer);
     });
 
