@@ -19,7 +19,9 @@ export function clientFactory() {
     sendServerEvent: <E extends keyof ServerMessages>(
       name: E,
       data: ServerMessages[E]
-    ) => emitter.emit(name, data),
+    ) => {
+      emitter.emit(name, data);
+    },
 
     prepareServerResponse: <E extends keyof ClientMessages>(
       name: E,
@@ -31,7 +33,12 @@ export function clientFactory() {
     off: emitter.off,
     emit: jest
       .fn()
-      .mockImplementation((name: keyof ClientMessages) => emitResponses[name]),
+      .mockImplementation(
+        (name: keyof ClientMessages) =>
+          new Promise((resolve, reject) =>
+            setTimeout(() => resolve(emitResponses[name]), 50)
+          )
+      ),
     close: jest.fn(),
 
     connectionMonitor: connectionMonitorFactory(),

@@ -125,6 +125,30 @@ class RoomClient {
   }): Promise<RoomClient> {
     const client = await Client.connect(call.url);
 
+    // The server sends the other members of the room
+    // very quickly, sometimes before we even receive the response
+    // to our own join request. Keep track of other peers
+    // if this happens.
+    const stagedJoinedEvents: {
+      id: string;
+      role: Role;
+      status: UserStatus[];
+    }[] = [];
+
+    const stagedJoinedHandler = ({
+      id,
+      role,
+      status,
+    }: {
+      id: string;
+      role: Role;
+      status: UserStatus[];
+    }) => {
+      stagedJoinedEvents.push({ id, role, status });
+    };
+
+    client.on("joined", stagedJoinedHandler);
+
     // Request to join the room.
     const {
       role,
@@ -180,6 +204,8 @@ class RoomClient {
       rtpCapabilities: device.rtpCapabilities,
     });
 
+    client.off("joined", stagedJoinedHandler);
+
     return new RoomClient({
       callId: call.id,
       client,
@@ -188,6 +214,7 @@ class RoomClient {
       role,
       userId,
       status,
+      stagedJoinedEvents,
     });
   }
 
@@ -199,6 +226,7 @@ class RoomClient {
     role,
     userId,
     status,
+    stagedJoinedEvents,
   }: {
     callId: string;
     client: Client;
@@ -207,6 +235,7 @@ class RoomClient {
     role: Participant["role"];
     userId: string;
     status: UserStatus[];
+    stagedJoinedEvents: { id: string; role: Role; status: UserStatus[] }[];
   }) {
     this.callId = callId;
     this.client = client;
@@ -271,7 +300,15 @@ class RoomClient {
     );
 
     // Listen for new joiners
-    client.on("joined", async ({ id, role, status }) => {
+    const joinedHandler = async ({
+      id,
+      role,
+      status,
+    }: {
+      id: string;
+      role: Role;
+      status: UserStatus[];
+    }) => {
       if (!this.peers[id]) {
         this.peers[id] = {
           user: { id, role },
@@ -287,12 +324,17 @@ class RoomClient {
 
       this.peers[id].status = status;
       this.emitter.emit("onPeerUpdate", this.peers[id]);
-    });
+    };
+
+    // Respond to staged joined events
+    stagedJoinedEvents.forEach((event) => joinedHandler(event));
+
+    client.on("joined", joinedHandler);
 
     // listen for new peer tracks from the server
     // TODO this event will need to distinguish between types of video stream
     // (screenshare vs camera)
-    client.on("consume", async ({ user, ...options }) => {
+    client.on("consume", async ({ user, paused, ...options }) => {
       const consumer = await consumerTransport.consume(options);
 
       if (!this.peers[user.id]) {
@@ -310,11 +352,13 @@ class RoomClient {
 
       this.peers[user.id].consumers[options.label] = consumer;
       this.peers[user.id].pausedStates[options.label] = paused;
-      // Screenshare goes in a different stream
-      if (options.label === ProducerLabel.screenshare) {
-        this.peers[user.id].screenshareStream.addTrack(consumer.track);
-      } else {
-        this.peers[user.id].stream.addTrack(consumer.track);
+      if (!paused) {
+        // Screenshare goes in a different stream
+        if (options.label === ProducerLabel.screenshare) {
+          this.peers[user.id].screenshareStream.addTrack(consumer.track);
+        } else {
+          this.peers[user.id].stream.addTrack(consumer.track);
+        }
       }
       this.emitter.emit("onPeerUpdate", this.peers[user.id]);
     });
@@ -609,6 +653,10 @@ class RoomClient {
       type: producer.kind as MediaKind,
       ...(reason ? { reason: reason } : {}),
     });
+  }
+
+  getPeers() {
+    return Object.values(this.peers);
   }
 }
 

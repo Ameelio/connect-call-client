@@ -162,6 +162,7 @@ const useConnectCall = ({
     connectionState,
     status,
   }: Peer) => {
+    console.log("handling peer update", user, status);
     setPeers((peers) => {
       return [
         ...peers.filter((p) => p.user.id !== user.id),
@@ -248,6 +249,7 @@ const useConnectCall = ({
     })
       .then((client) => {
         setClient(client);
+        setPeers(client.getPeers());
         setTrackedUser(client.user);
       })
       .catch(handleError);

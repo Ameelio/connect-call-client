@@ -59,6 +59,7 @@ export type ServerMessages = {
   consume: Required<Omit<ConsumerOptions, "appData">> & {
     label: ProducerLabel;
     user: Participant;
+    paused: boolean;
   };
   participantDisconnect: Participant;
   joined: Participant & { callId: string; status: UserStatus[] };
