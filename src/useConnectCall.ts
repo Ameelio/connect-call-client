@@ -41,6 +41,7 @@ type Props = {
     msElapsed: number
   ) => void;
   onNewMessage?: (message: Message) => void;
+  disableFrux?: boolean;
 };
 
 export type Message = {
@@ -93,6 +94,7 @@ const useConnectCall = ({
   onPeerConnected,
   onPeerDisconnected,
   onTimer,
+  disableFrux,
   onNewMessage,
 }: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
@@ -219,6 +221,8 @@ const useConnectCall = ({
 
   const handleConnectionState = useCallback(
     (connectionState: ConnectionState) => {
+      if (disableFrux) return;
+
       setConnectionState(connectionState);
       if (localVideo && connectionState.videoDisabled && !localVideo.paused) {
         setLocalVideo({
