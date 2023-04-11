@@ -235,7 +235,12 @@ describe("useConnectCall", () => {
 
     act(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      client.sendServerEvent("consume", { user, kind: "audio" } as any)
+      client.sendServerEvent("consume", {
+        user,
+        kind: "audio",
+        label: "audio",
+        paused: false,
+      } as any)
     );
     await waitFor(() => expect(result.current.peers).toHaveLength(1));
     expect(result.current.peers).toMatchInlineSnapshot(`
@@ -244,6 +249,9 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": NaN,
             "quality": "unknown",
+          },
+          "pausedStates": Object {
+            "audio": false,
           },
           "screenshareStream": MediaStream {
             "tracks": Array [],
@@ -268,7 +276,12 @@ describe("useConnectCall", () => {
 
     act(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      client.sendServerEvent("consume", { user, kind: "video" } as any)
+      client.sendServerEvent("consume", {
+        user,
+        kind: "video",
+        label: "video",
+        paused: false,
+      } as any)
     );
     await waitFor(() =>
       expect(result.current.peers[0].stream.getTracks()).toHaveLength(2)
@@ -279,6 +292,57 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": NaN,
             "quality": "unknown",
+          },
+          "pausedStates": Object {
+            "audio": false,
+            "video": false,
+          },
+          "screenshareStream": MediaStream {
+            "tracks": Array [],
+          },
+          "status": Array [],
+          "stream": MediaStream {
+            "tracks": Array [
+              Object {
+                "kind": "audio",
+              },
+              Object {
+                "kind": "video",
+              },
+            ],
+          },
+          "user": Object {
+            "detail": undefined,
+            "id": "USER-01",
+            "role": "visitParticipant",
+            "type": "user",
+          },
+        },
+      ]
+    `);
+
+    act(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client.sendServerEvent("consume", {
+        user,
+        kind: "video",
+        label: "video",
+        paused: false,
+      } as any)
+    );
+    await waitFor(() =>
+      expect(result.current.peers[0].stream.getTracks()).toHaveLength(2)
+    );
+    expect(result.current.peers).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "connectionState": Object {
+            "ping": NaN,
+            "quality": "unknown",
+          },
+          "pausedStates": Object {
+            "audio": false,
+            "video": false,
           },
           "screenshareStream": MediaStream {
             "tracks": Array [],
@@ -308,6 +372,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("producerUpdate", {
         from: user,
         paused: true,
+        label: "video",
         type: "video",
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
@@ -321,6 +386,10 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": NaN,
             "quality": "unknown",
+          },
+          "pausedStates": Object {
+            "audio": false,
+            "video": true,
           },
           "screenshareStream": MediaStream {
             "tracks": Array [],

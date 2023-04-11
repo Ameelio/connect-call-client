@@ -109,6 +109,7 @@ const useConnectCall = ({
       stream: MediaStream;
       screenshareStream: MediaStream;
       connectionState: ConnectionState;
+      pausedStates: Partial<Record<ProducerLabel, boolean>>;
       status: UserStatus[];
     }[]
   >([]);
@@ -160,6 +161,7 @@ const useConnectCall = ({
     stream,
     screenshareStream,
     connectionState,
+    pausedStates,
     status,
   }: Peer) => {
     setPeers((peers) => {
@@ -170,6 +172,7 @@ const useConnectCall = ({
           stream,
           screenshareStream,
           connectionState,
+          pausedStates,
           status,
         },
       ];
