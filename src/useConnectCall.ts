@@ -360,6 +360,7 @@ const useConnectCall = ({
     if (!client) throw new Error("Not connected");
     if (localAudio?.paused === undefined)
       throw new Error("Not producing audio");
+    console.log("Toggling audio; currently is", localAudio.paused);
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
   }, [client, localAudio?.paused]);
 
@@ -440,7 +441,7 @@ const useConnectCall = ({
       if (label === ProducerLabel.audio) {
         setLocalAudio({
           stream,
-          paused: !client.user.status.includes(UserStatus.AudioMutedByServer),
+          paused: client.user.status.includes(UserStatus.AudioMutedByServer),
         });
       }
       if (label === ProducerLabel.video) {
@@ -451,7 +452,7 @@ const useConnectCall = ({
           videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
         setLocalVideo({
           stream,
-          paused: !client.user.status.includes(UserStatus.VideoMutedByServer),
+          paused: client.user.status.includes(UserStatus.VideoMutedByServer),
           aspectRatio,
         });
       }
