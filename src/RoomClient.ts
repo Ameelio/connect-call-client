@@ -573,7 +573,6 @@ class RoomClient {
     if (!this.producers.audio) return;
     // Do not allow resuming audio when remote muted
     if (this.user.status.includes(UserStatus.AudioMutedByServer)) {
-      console.log("Refusing to unmute due to current status");
       return;
     }
     await this.updateProducer(this.producers.audio, false);

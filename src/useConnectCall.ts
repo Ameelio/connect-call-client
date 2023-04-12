@@ -364,7 +364,6 @@ const useConnectCall = ({
     if (!client) throw new Error("Not connected");
     if (localAudio?.paused === undefined)
       throw new Error("Not producing audio");
-    console.log("Toggling audio; currently is", localAudio.paused);
     localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
   }, [client, localAudio?.paused]);
 
