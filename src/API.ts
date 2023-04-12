@@ -23,6 +23,7 @@ export enum ParticipantEventDetail {
 export enum Role {
   visitParticipant = "visitParticipant",
   webinarAttendee = "webinarAttendee",
+  webinarIsolatedAttendee = "webinarIsolatedAttendee",
   webinarHost = "webinarHost",
   monitor = "monitor",
 }

@@ -572,7 +572,9 @@ class RoomClient {
   async resumeAudio() {
     if (!this.producers.audio) return;
     // Do not allow resuming audio when remote muted
-    if (this.user.status.includes(UserStatus.AudioMutedByServer)) return;
+    if (this.user.status.includes(UserStatus.AudioMutedByServer)) {
+      return;
+    }
     await this.updateProducer(this.producers.audio, false);
   }
 
