@@ -630,6 +630,27 @@ class RoomClient {
     await this.textMessage(contents);
   }
 
+  async setPreferredSimulcastLayer({
+    peerId,
+    label,
+    spatialLayer,
+    temporalLayer,
+  }: {
+    peerId: string;
+    label: ProducerLabel;
+    spatialLayer: number;
+    temporalLayer: number;
+  }) {
+    const consumer = this.peers[peerId]?.consumers[label];
+    if (!consumer) return;
+
+    await this.client.emit("setPreferredSimulcastLayer", {
+      consumerId: consumer.id,
+      spatialLayer,
+      temporalLayer,
+    });
+  }
+
   async close() {
     if (this.heartbeat) clearInterval(this.heartbeat);
     this.client.close();
