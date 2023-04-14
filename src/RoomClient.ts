@@ -639,7 +639,7 @@ class RoomClient {
     peerId: string;
     label: ProducerLabel;
     spatialLayer: number;
-    temporalLayer: number;
+    temporalLayer?: number;
   }) {
     const consumer = this.peers[peerId]?.consumers[label];
     if (!consumer) return;

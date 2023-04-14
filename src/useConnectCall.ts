@@ -76,7 +76,7 @@ export type ConnectCall = {
     peerId: string;
     label: ProducerLabel;
     spatialLayer: number;
-    temporalLayer: number;
+    temporalLayer?: number;
   }) => Promise<void>;
   terminateCall: () => Promise<void>;
   textMessage: (contents: string) => Promise<void>;

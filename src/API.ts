@@ -119,7 +119,7 @@ export type ClientMessages = {
   lowerHand: [Record<string, never>, { success: true }];
   remoteLowerHand: [{ targetUserId: string }, { success: true }];
   setPreferredSimulcastLayer: [
-    { consumerId: string; spatialLayer: number; temporalLayer: number },
+    { consumerId: string; spatialLayer: number; temporalLayer?: number },
     { success: true }
   ];
   declareRtpCapabilities: [
