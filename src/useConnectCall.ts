@@ -376,7 +376,7 @@ const useConnectCall = ({
       peerId: string;
       label: ProducerLabel;
       spatialLayer: number;
-      temporalLayer: number;
+      temporalLayer?: number;
     }) => {
       if (!client) throw new Error("Not connected");
       await client.setPreferredSimulcastLayer({
