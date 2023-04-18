@@ -252,6 +252,7 @@ const useConnectCall = ({
       id: call.id,
       url: call.url,
       token: call.token,
+      disableFrux,
     })
       .then((client) => {
         setClient(client);
