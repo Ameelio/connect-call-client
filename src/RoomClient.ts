@@ -95,6 +95,7 @@ type Events = {
 
 class RoomClient {
   producers: Partial<Record<ProducerLabel, Producer>> = {};
+  disableFrux: boolean;
   private peers: Record<
     string,
     Peer & {
@@ -118,10 +119,14 @@ class RoomClient {
   };
   private heartbeat?: NodeJS.Timer;
 
-  static async connect(call: {
+  static async connect({
+    disableFrux,
+    ...call
+  }: {
     id: string;
     url: string;
     token: string;
+    disableFrux?: boolean;
   }): Promise<RoomClient> {
     const client = await Client.connect(call.url);
 
@@ -215,6 +220,7 @@ class RoomClient {
       userId,
       status,
       stagedJoinedEvents,
+      disableFrux,
     });
   }
 
@@ -227,6 +233,7 @@ class RoomClient {
     userId,
     status,
     stagedJoinedEvents,
+    disableFrux,
   }: {
     callId: string;
     client: Client;
@@ -236,7 +243,9 @@ class RoomClient {
     userId: string;
     status: UserStatus[];
     stagedJoinedEvents: { id: string; role: Role; status: UserStatus[] }[];
+    disableFrux?: boolean;
   }) {
+    this.disableFrux = disableFrux || false;
     this.callId = callId;
     this.client = client;
     this.producerTransport = producerTransport;
@@ -251,6 +260,8 @@ class RoomClient {
     this.emitter = mitt();
     client.connectionMonitor.start();
     client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
+      if (this.disableFrux) return;
+
       let videoDisabled = !!this.connectionState.videoDisabled;
       if (
         currentQuality.quality === "bad" &&
