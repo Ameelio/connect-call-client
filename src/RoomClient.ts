@@ -243,9 +243,9 @@ class RoomClient {
     userId: string;
     status: UserStatus[];
     stagedJoinedEvents: { id: string; role: Role; status: UserStatus[] }[];
-    disableFrux: boolean;
+    disableFrux?: boolean;
   }) {
-    this.disableFrux = disableFrux;
+    this.disableFrux = disableFrux || false;
     this.callId = callId;
     this.client = client;
     this.producerTransport = producerTransport;
