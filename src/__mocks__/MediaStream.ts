@@ -1,4 +1,7 @@
-type MediaStreamTrack = { kind: "audio" } | { video: "video" };
+type MediaStreamTrack = {
+  kind: "audio" | "video";
+  addEventListener: (event: string, handler: any) => void;
+};
 
 export default class MediaStream {
   private tracks: MediaStreamTrack[] = [];
