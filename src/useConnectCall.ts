@@ -71,6 +71,12 @@ export type ConnectCall = {
   peers: Peer[];
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
+  setPreferredSimulcastLayer: (x: {
+    peerId: string;
+    label: ProducerLabel;
+    spatialLayer: number;
+    temporalLayer?: number;
+  }) => Promise<void>;
   terminateCall: () => Promise<void>;
   textMessage: (contents: string) => Promise<void>;
   terminate: () => Promise<void>;
@@ -364,6 +370,29 @@ const useConnectCall = ({
     [client, setMessages, user]
   );
 
+  const setPreferredSimulcastLayer = useCallback(
+    async ({
+      peerId,
+      label,
+      spatialLayer,
+      temporalLayer,
+    }: {
+      peerId: string;
+      label: ProducerLabel;
+      spatialLayer: number;
+      temporalLayer?: number;
+    }) => {
+      if (!client) throw new Error("Not connected");
+      await client.setPreferredSimulcastLayer({
+        peerId,
+        label,
+        spatialLayer,
+        temporalLayer,
+      });
+    },
+    [client]
+  );
+
   const toggleAudio = useCallback(async () => {
     if (!client) throw new Error("Not connected");
     if (localAudio?.paused === undefined)
@@ -506,6 +535,7 @@ const useConnectCall = ({
     raiseHand,
     lowerHand,
     remoteLowerHand,
+    setPreferredSimulcastLayer,
     setDisableFrux: (setting: boolean) => setDisableFrux(setting),
 
     terminateCall,
