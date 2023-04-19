@@ -506,7 +506,7 @@ const useConnectCall = ({
     raiseHand,
     lowerHand,
     remoteLowerHand,
-    setDisableFrux,
+    setDisableFrux: (setting: boolean) => setDisableFrux(setting),
 
     terminateCall,
   };
