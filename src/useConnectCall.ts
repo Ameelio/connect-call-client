@@ -88,12 +88,6 @@ export type ConnectCall = {
   lowerHand: () => Promise<void>;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
-  setPreferredSimulcastLayer: (opts: {
-    peerId: string;
-    label: ProducerLabel;
-    spatialLayer: number;
-    temporalLayer?: number;
-  }) => Promise<void>;
   setDisableFrux: (setting: boolean) => void;
 };
 
