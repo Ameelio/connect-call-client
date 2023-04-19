@@ -119,14 +119,10 @@ class RoomClient {
   };
   private heartbeat?: NodeJS.Timer;
 
-  static async connect({
-    disableFrux,
-    ...call
-  }: {
+  static async connect(call: {
     id: string;
     url: string;
     token: string;
-    disableFrux?: boolean;
   }): Promise<RoomClient> {
     const client = await Client.connect(call.url);
 
@@ -220,7 +216,6 @@ class RoomClient {
       userId,
       status,
       stagedJoinedEvents,
-      disableFrux,
     });
   }
 
@@ -233,7 +228,6 @@ class RoomClient {
     userId,
     status,
     stagedJoinedEvents,
-    disableFrux,
   }: {
     callId: string;
     client: Client;
@@ -243,9 +237,8 @@ class RoomClient {
     userId: string;
     status: UserStatus[];
     stagedJoinedEvents: { id: string; role: Role; status: UserStatus[] }[];
-    disableFrux?: boolean;
   }) {
-    this.disableFrux = disableFrux || false;
+    this.disableFrux = false;
     this.callId = callId;
     this.client = client;
     this.producerTransport = producerTransport;

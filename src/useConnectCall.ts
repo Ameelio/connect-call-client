@@ -41,7 +41,6 @@ type Props = {
     msElapsed: number
   ) => void;
   onNewMessage?: (message: Message) => void;
-  disableFrux?: boolean;
 };
 
 export type Message = {
@@ -83,6 +82,7 @@ export type ConnectCall = {
   lowerHand: () => Promise<void>;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
+  setDisableFrux: (setting: boolean) => void;
 };
 
 /**
@@ -94,9 +94,9 @@ const useConnectCall = ({
   onPeerConnected,
   onPeerDisconnected,
   onTimer,
-  disableFrux,
   onNewMessage,
 }: Props): ConnectCall => {
+  const [disableFrux, setDisableFrux] = useState<boolean>(false);
   const [client, setClient] = useState<RoomClient>();
   const [localAudio, setLocalAudio] = useState<AudioTrack>();
   const [localVideo, setLocalVideo] = useState<VideoTrack>();
@@ -115,6 +115,10 @@ const useConnectCall = ({
       status: UserStatus[];
     }[]
   >([]);
+
+  useEffect(() => {
+    if (client) client.disableFrux = disableFrux;
+  }, [disableFrux]);
 
   const [trackedUser, setTrackedUser] = useState<{
     id: string;
@@ -232,7 +236,7 @@ const useConnectCall = ({
       }
       // TODO screenshare FRUX things
     },
-    [setConnectionState, localVideo]
+    [setConnectionState, localVideo, disableFrux]
   );
 
   const [debounceReady, setDebounceReady] = useState(false);
@@ -252,7 +256,6 @@ const useConnectCall = ({
       id: call.id,
       url: call.url,
       token: call.token,
-      disableFrux,
     })
       .then((client) => {
         setClient(client);
@@ -503,6 +506,7 @@ const useConnectCall = ({
     raiseHand,
     lowerHand,
     remoteLowerHand,
+    setDisableFrux: (setting: boolean) => setDisableFrux(setting),
 
     terminateCall,
   };
