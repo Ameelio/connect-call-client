@@ -82,7 +82,7 @@ export type ConnectCall = {
   lowerHand: () => Promise<void>;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
-  setDisableFrux: () => void;
+  setDisableFrux: (setting: boolean) => void;
 };
 
 /**
