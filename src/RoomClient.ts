@@ -518,8 +518,14 @@ class RoomClient {
       track,
       appData: { label },
     });
-
     this.producers[label] = producer;
+
+    track.addEventListener("ended", () => {
+      const producer = this.producers[label];
+      if (producer && producer.track === track) {
+        this.closeProducer(label);
+      }
+    });
   }
 
   async closeProducer(label: ProducerLabel): Promise<void> {
