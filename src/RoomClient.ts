@@ -81,6 +81,8 @@ type Events = {
   onPeerConnect: Participant;
   onPeerDisconnect: Participant;
   onPeerUpdate: Peer;
+  onMonitorJoin: string;
+  onMonitorDisconnect: string;
   onProducerUpdate: {
     producerId: string;
     paused: boolean;
@@ -102,6 +104,8 @@ class RoomClient {
       consumers: Partial<Record<ProducerLabel, Consumer>>;
     }
   > = {};
+  // We don't actually know anything about a monitor except their id.
+  private monitors: Set<string> = new Set();
   public user: {
     id: string;
     role: Role;
@@ -313,21 +317,26 @@ class RoomClient {
       role: Role;
       status: UserStatus[];
     }) => {
-      if (!this.peers[id]) {
-        this.peers[id] = {
-          user: { id, role },
-          consumers: {},
-          stream: new MediaStream(),
-          screenshareStream: new MediaStream(),
-          status,
-          pausedStates: {},
-          connectionState: { quality: "unknown", ping: NaN },
-        };
-        this.emitter.emit("onPeerConnect", { id, role });
-      }
+      if (role === Role.monitor) {
+        this.monitors.add(id);
+        this.emitter.emit("onMonitorJoin", id);
+      } else {
+        if (!this.peers[id]) {
+          this.peers[id] = {
+            user: { id, role },
+            consumers: {},
+            stream: new MediaStream(),
+            screenshareStream: new MediaStream(),
+            status,
+            pausedStates: {},
+            connectionState: { quality: "unknown", ping: NaN },
+          };
+          this.emitter.emit("onPeerConnect", { id, role });
+        }
 
-      this.peers[id].status = status;
-      this.emitter.emit("onPeerUpdate", this.peers[id]);
+        this.peers[id].status = status;
+        this.emitter.emit("onPeerUpdate", this.peers[id]);
+      }
     };
 
     // Respond to staged joined events
@@ -437,6 +446,9 @@ class RoomClient {
         peer.consumers.video?.close();
         delete this.peers[user.id];
         this.emitter.emit("onPeerDisconnect", user);
+      } else if (this.monitors.has(user.id)) {
+        this.monitors.delete(user.id);
+        this.emitter.emit("onMonitorDisconnect", user.id);
       }
     });
 
