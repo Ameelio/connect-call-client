@@ -69,6 +69,7 @@ export type ConnectCall = {
     label: ProducerLabel
   ) => Promise<void>;
   peers: Peer[];
+  monitors: string[];
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
   setPreferredSimulcastLayer: (x: {
@@ -121,6 +122,7 @@ const useConnectCall = ({
       status: UserStatus[];
     }[]
   >([]);
+  const [monitors, setMonitors] = useState<string[]>([]);
 
   useEffect(() => {
     if (client) client.disableFrux = disableFrux;
@@ -189,6 +191,14 @@ const useConnectCall = ({
         },
       ];
     });
+  };
+
+  const handleMonitorJoin = (id: string) => {
+    setMonitors([...monitors.filter((x) => x !== id), id]);
+  };
+
+  const handleMonitorDisconnect = (id: string) => {
+    setMonitors(monitors.filter((x) => x !== id));
   };
 
   const handleUserUpdate = (user: {
@@ -309,6 +319,8 @@ const useConnectCall = ({
     if (!client) return;
     client.on("onPeerDisconnect", handlePeerDisconnect);
     client.on("onPeerUpdate", handlePeerUpdate);
+    client.on("onMonitorJoin", handleMonitorJoin);
+    client.on("onMonitorDisconnect", handleMonitorDisconnect);
     client.on("onUserUpdate", handleUserUpdate);
     client.on("onStatusChange", handleStatusChange);
     client.on("onTextMessage", handleTextMessage);
@@ -524,6 +536,7 @@ const useConnectCall = ({
     messages,
     sendMessage,
     disconnect,
+    monitors,
 
     // Operations
     textMessage,
