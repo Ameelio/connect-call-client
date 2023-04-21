@@ -124,7 +124,7 @@ const useConnectCall = ({
 
   useEffect(() => {
     if (client) client.disableFrux = disableFrux;
-  }, [disableFrux]);
+  }, [disableFrux, client]);
 
   const [trackedUser, setTrackedUser] = useState<{
     id: string;
