@@ -33,6 +33,7 @@ type Props = {
     token: string;
   };
   user: Pick<Participant, "id">;
+  onMonitorJoined?: (monitor: Participant) => void;
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
   onTimer?: (
@@ -98,6 +99,7 @@ export type ConnectCall = {
 const useConnectCall = ({
   call,
   user,
+  onMonitorJoined,
   onPeerConnected,
   onPeerDisconnected,
   onTimer,
@@ -338,6 +340,13 @@ const useConnectCall = ({
       client.off("onConnectionState", handleConnectionState);
     };
   }, [client, handleTimer, handleConnectionState]);
+
+  // announce monitor joins
+  useEffect(() => {
+    if (!client || !onMonitorJoined) return;
+    client.on("onMonitorJoin", onMonitorJoined);
+    return () => client.off("onMonitorJoin", onMonitorJoined);
+  }, [client, onMonitorJoined]);
 
   // announce peer connects
   useEffect(() => {
