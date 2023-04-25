@@ -284,7 +284,9 @@ describe("useConnectCall", () => {
       } as any)
     );
     await waitFor(() =>
-      expect(result.current.peers[0].stream.getTracks()).toHaveLength(2)
+      expect(
+        result.current.peers[0].streams[ProducerLabel.video].getTracks()
+      ).toHaveLength(1)
     );
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
@@ -331,7 +333,9 @@ describe("useConnectCall", () => {
       } as any)
     );
     await waitFor(() =>
-      expect(result.current.peers[0].stream.getTracks()).toHaveLength(2)
+      expect(
+        result.current.peers[0].streams[ProducerLabel.video].getTracks()
+      ).toHaveLength(1)
     );
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
@@ -378,7 +382,9 @@ describe("useConnectCall", () => {
       } as any)
     );
     await waitFor(() =>
-      expect(result.current.peers[0].stream.getTracks()).toHaveLength(1)
+      expect(
+        result.current.peers[0].streams[ProducerLabel.video].getTracks()
+      ).toHaveLength(1)
     );
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [

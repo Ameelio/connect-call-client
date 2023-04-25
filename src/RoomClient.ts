@@ -48,8 +48,7 @@ const config: Record<MediaKind, ProducerOptions> = {
 
 export type Peer = {
   user: Participant;
-  stream: MediaStream;
-  screenshareStream: MediaStream;
+  streams: Record<ProducerLabel, MediaStream>;
   pausedStates: Partial<Record<ProducerLabel, boolean>>;
   connectionState: ConnectionState;
   status: UserStatus[];
@@ -317,8 +316,11 @@ class RoomClient {
         this.peers[id] = {
           user: { id, role },
           consumers: {},
-          stream: new MediaStream(),
-          screenshareStream: new MediaStream(),
+          streams: {
+            [ProducerLabel.video]: new MediaStream(),
+            [ProducerLabel.audio]: new MediaStream(),
+            [ProducerLabel.screenshare]: new MediaStream(),
+          },
           status,
           pausedStates: {},
           connectionState: { quality: "unknown", ping: NaN },
@@ -345,8 +347,11 @@ class RoomClient {
         this.peers[user.id] = {
           user,
           consumers: {},
-          stream: new MediaStream(),
-          screenshareStream: new MediaStream(),
+          streams: {
+            [ProducerLabel.video]: new MediaStream(),
+            [ProducerLabel.audio]: new MediaStream(),
+            [ProducerLabel.screenshare]: new MediaStream(),
+          },
           pausedStates: {},
           status: [],
           connectionState: { quality: "unknown", ping: NaN },
@@ -356,25 +361,12 @@ class RoomClient {
 
       const existingConsumer = this.peers[user.id].consumers[label];
       if (existingConsumer) {
-        if (label === ProducerLabel.screenshare) {
-          this.peers[user.id].screenshareStream.removeTrack(
-            existingConsumer.track
-          );
-        } else {
-          this.peers[user.id].stream.removeTrack(existingConsumer.track);
-        }
+        this.peers[user.id].streams[label].removeTrack(existingConsumer.track);
       }
 
       this.peers[user.id].consumers[label] = consumer;
       this.peers[user.id].pausedStates[label] = paused;
-      if (!paused) {
-        // Screenshare goes in a different stream
-        if (label === ProducerLabel.screenshare) {
-          this.peers[user.id].screenshareStream.addTrack(consumer.track);
-        } else {
-          this.peers[user.id].stream.addTrack(consumer.track);
-        }
-      }
+      this.peers[user.id].streams[label].addTrack(consumer.track);
       this.emitter.emit("onPeerUpdate", this.peers[user.id]);
     });
 
@@ -384,21 +376,6 @@ class RoomClient {
       if (!peer) throw new Error(`Unknown peer update ${from.id}`);
       const track = peer.consumers[label]?.track;
       peer.pausedStates[label] = paused;
-      if (track) {
-        if (label === ProducerLabel.screenshare) {
-          if (paused) {
-            peer.screenshareStream.removeTrack(track);
-          } else {
-            peer.screenshareStream.addTrack(track);
-          }
-        } else {
-          if (paused) {
-            peer.stream.removeTrack(track);
-          } else {
-            peer.stream.addTrack(track);
-          }
-        }
-      }
       if (!paused) {
         peer.connectionState.videoDisabled = false;
       } else if (reason === "paused_video_bad_connection") {
@@ -418,11 +395,7 @@ class RoomClient {
 
       const track = consumer.track;
       if (track) {
-        if (label === ProducerLabel.screenshare) {
-          peer.screenshareStream.removeTrack(track);
-        } else {
-          peer.stream.removeTrack(track);
-        }
+        peer.streams[label].removeTrack(track);
       }
       delete peer.consumers[label];
       delete peer.pausedStates[label];
@@ -465,8 +438,11 @@ class RoomClient {
           this.peers[user.id] = {
             user,
             consumers: {},
-            stream: new MediaStream(),
-            screenshareStream: new MediaStream(),
+            streams: {
+              [ProducerLabel.video]: new MediaStream(),
+              [ProducerLabel.audio]: new MediaStream(),
+              [ProducerLabel.screenshare]: new MediaStream(),
+            },
             status: status,
             pausedStates: {},
             connectionState: { quality: "unknown", ping: NaN },
