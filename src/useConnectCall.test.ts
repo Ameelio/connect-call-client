@@ -243,6 +243,11 @@ describe("useConnectCall", () => {
       } as any)
     );
     await waitFor(() => expect(result.current.peers).toHaveLength(1));
+    await waitFor(() =>
+      expect(
+        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+      ).toHaveLength(1)
+    );
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
         Object {
@@ -253,16 +258,21 @@ describe("useConnectCall", () => {
           "pausedStates": Object {
             "audio": false,
           },
-          "screenshareStream": MediaStream {
-            "tracks": Array [],
-          },
           "status": Array [],
-          "stream": MediaStream {
-            "tracks": Array [
-              Object {
-                "kind": "audio",
-              },
-            ],
+          "streams": Object {
+            "audio": MediaStream {
+              "tracks": Array [
+                Object {
+                  "kind": "audio",
+                },
+              ],
+            },
+            "screenshare": MediaStream {
+              "tracks": Array [],
+            },
+            "video": MediaStream {
+              "tracks": Array [],
+            },
           },
           "user": Object {
             "detail": undefined,
@@ -288,6 +298,11 @@ describe("useConnectCall", () => {
         result.current.peers[0].streams[ProducerLabel.video].getTracks()
       ).toHaveLength(1)
     );
+    await waitFor(() =>
+      expect(
+        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+      ).toHaveLength(1)
+    );
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
         Object {
@@ -299,19 +314,25 @@ describe("useConnectCall", () => {
             "audio": false,
             "video": false,
           },
-          "screenshareStream": MediaStream {
-            "tracks": Array [],
-          },
           "status": Array [],
-          "stream": MediaStream {
-            "tracks": Array [
-              Object {
-                "kind": "audio",
-              },
-              Object {
-                "kind": "video",
-              },
-            ],
+          "streams": Object {
+            "audio": MediaStream {
+              "tracks": Array [
+                Object {
+                  "kind": "audio",
+                },
+              ],
+            },
+            "screenshare": MediaStream {
+              "tracks": Array [],
+            },
+            "video": MediaStream {
+              "tracks": Array [
+                Object {
+                  "kind": "video",
+                },
+              ],
+            },
           },
           "user": Object {
             "detail": undefined,
@@ -337,6 +358,11 @@ describe("useConnectCall", () => {
         result.current.peers[0].streams[ProducerLabel.video].getTracks()
       ).toHaveLength(1)
     );
+    await waitFor(() =>
+      expect(
+        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+      ).toHaveLength(1)
+    );
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
         Object {
@@ -348,19 +374,25 @@ describe("useConnectCall", () => {
             "audio": false,
             "video": false,
           },
-          "screenshareStream": MediaStream {
-            "tracks": Array [],
-          },
           "status": Array [],
-          "stream": MediaStream {
-            "tracks": Array [
-              Object {
-                "kind": "audio",
-              },
-              Object {
-                "kind": "video",
-              },
-            ],
+          "streams": Object {
+            "audio": MediaStream {
+              "tracks": Array [
+                Object {
+                  "kind": "audio",
+                },
+              ],
+            },
+            "screenshare": MediaStream {
+              "tracks": Array [],
+            },
+            "video": MediaStream {
+              "tracks": Array [
+                Object {
+                  "kind": "video",
+                },
+              ],
+            },
           },
           "user": Object {
             "detail": undefined,
@@ -386,6 +418,11 @@ describe("useConnectCall", () => {
         result.current.peers[0].streams[ProducerLabel.video].getTracks()
       ).toHaveLength(1)
     );
+    await waitFor(() =>
+      expect(
+        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+      ).toHaveLength(1)
+    );
     expect(result.current.peers).toMatchInlineSnapshot(`
       Array [
         Object {
@@ -397,16 +434,25 @@ describe("useConnectCall", () => {
             "audio": false,
             "video": true,
           },
-          "screenshareStream": MediaStream {
-            "tracks": Array [],
-          },
           "status": Array [],
-          "stream": MediaStream {
-            "tracks": Array [
-              Object {
-                "kind": "audio",
-              },
-            ],
+          "streams": Object {
+            "audio": MediaStream {
+              "tracks": Array [
+                Object {
+                  "kind": "audio",
+                },
+              ],
+            },
+            "screenshare": MediaStream {
+              "tracks": Array [],
+            },
+            "video": MediaStream {
+              "tracks": Array [
+                Object {
+                  "kind": "video",
+                },
+              ],
+            },
           },
           "user": Object {
             "detail": undefined,
@@ -444,11 +490,19 @@ describe("useConnectCall", () => {
 
     await act(async () =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      client.sendServerEvent("consume", { user, kind: "audio" } as any)
+      client.sendServerEvent("consume", {
+        user,
+        kind: "audio",
+        label: "audio",
+      } as any)
     );
     await act(async () =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      client.sendServerEvent("consume", { user, kind: "video" } as any)
+      client.sendServerEvent("consume", {
+        user,
+        kind: "video",
+        label: "video",
+      } as any)
     );
 
     expect(onPeerConnected).toHaveBeenCalledTimes(1);
