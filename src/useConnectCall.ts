@@ -33,7 +33,7 @@ type Props = {
     token: string;
   };
   user: Pick<Participant, "id">;
-  onMonitorJoined?: (monitor: string) => void;
+  onMonitorJoined?: (user: string) => void;
   onPeerConnected?: (user: Participant) => void;
   onPeerDisconnected?: (user: Participant) => void;
   onTimer?: (
