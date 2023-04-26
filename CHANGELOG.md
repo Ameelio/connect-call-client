@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Announce monitor join events
+
+## [1.3.0] - 2023-04-21
+
+- Joining monitors are now put into a different array from `peers`.
+
 ## [1.2.0] - 2023-04-19
 
 - Automatically send `producerClose` when a track ends.
