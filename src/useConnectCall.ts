@@ -117,8 +117,13 @@ const useConnectCall = ({
   const [peers, setPeers] = useState<
     {
       user: Participant;
-      streams: Record<ProducerLabel, MediaStream>;
-      pausedStates: Partial<Record<ProducerLabel, boolean>>;
+      consumers: Record<
+        ProducerLabel,
+        {
+          stream: MediaStream;
+          paused: boolean;
+        }
+      >;
       connectionState: ConnectionState;
       status: UserStatus[];
     }[]
@@ -173,9 +178,8 @@ const useConnectCall = ({
 
   const handlePeerUpdate = ({
     user,
-    streams,
+    consumers,
     connectionState,
-    pausedStates,
     status,
   }: Peer) => {
     setPeers((peers) => {
@@ -183,9 +187,8 @@ const useConnectCall = ({
         ...peers.filter((p) => p.user.id !== user.id),
         {
           user,
-          streams,
+          consumers,
           connectionState,
-          pausedStates,
           status,
         },
       ];

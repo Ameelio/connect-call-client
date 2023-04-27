@@ -245,7 +245,9 @@ describe("useConnectCall", () => {
     await waitFor(() => expect(result.current.peers).toHaveLength(1));
     await waitFor(() =>
       expect(
-        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+        result.current.peers[0].consumers[
+          ProducerLabel.audio
+        ].stream.getTracks()
       ).toHaveLength(1)
     );
     expect(result.current.peers).toMatchInlineSnapshot(`
@@ -255,25 +257,37 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
-          "pausedStates": Object {
-            "audio": false,
-          },
-          "status": Array [],
-          "streams": Object {
-            "audio": MediaStream {
-              "tracks": Array [
-                Object {
+          "consumers": Object {
+            "audio": Object {
+              "consumer": Object {
+                "close": [MockFunction],
+                "track": Object {
                   "kind": "audio",
                 },
-              ],
+              },
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "kind": "audio",
+                  },
+                ],
+              },
             },
-            "screenshare": MediaStream {
-              "tracks": Array [],
+            "screenshare": Object {
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [],
+              },
             },
-            "video": MediaStream {
-              "tracks": Array [],
+            "video": Object {
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [],
+              },
             },
           },
+          "status": Array [],
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
@@ -295,12 +309,16 @@ describe("useConnectCall", () => {
     );
     await waitFor(() =>
       expect(
-        result.current.peers[0].streams[ProducerLabel.video].getTracks()
+        result.current.peers[0].consumers[
+          ProducerLabel.video
+        ].stream.getTracks()
       ).toHaveLength(1)
     );
     await waitFor(() =>
       expect(
-        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+        result.current.peers[0].consumers[
+          ProducerLabel.audio
+        ].stream.getTracks()
       ).toHaveLength(1)
     );
     expect(result.current.peers).toMatchInlineSnapshot(`
@@ -310,30 +328,47 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
-          "pausedStates": Object {
-            "audio": false,
-            "video": false,
-          },
-          "status": Array [],
-          "streams": Object {
-            "audio": MediaStream {
-              "tracks": Array [
-                Object {
+          "consumers": Object {
+            "audio": Object {
+              "consumer": Object {
+                "close": [MockFunction],
+                "track": Object {
                   "kind": "audio",
                 },
-              ],
+              },
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "kind": "audio",
+                  },
+                ],
+              },
             },
-            "screenshare": MediaStream {
-              "tracks": Array [],
+            "screenshare": Object {
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [],
+              },
             },
-            "video": MediaStream {
-              "tracks": Array [
-                Object {
+            "video": Object {
+              "consumer": Object {
+                "close": [MockFunction],
+                "track": Object {
                   "kind": "video",
                 },
-              ],
+              },
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "kind": "video",
+                  },
+                ],
+              },
             },
           },
+          "status": Array [],
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
@@ -355,12 +390,16 @@ describe("useConnectCall", () => {
     );
     await waitFor(() =>
       expect(
-        result.current.peers[0].streams[ProducerLabel.video].getTracks()
+        result.current.peers[0].consumers[
+          ProducerLabel.video
+        ].stream.getTracks()
       ).toHaveLength(1)
     );
     await waitFor(() =>
       expect(
-        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+        result.current.peers[0].consumers[
+          ProducerLabel.audio
+        ].stream.getTracks()
       ).toHaveLength(1)
     );
     expect(result.current.peers).toMatchInlineSnapshot(`
@@ -370,30 +409,47 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
-          "pausedStates": Object {
-            "audio": false,
-            "video": false,
-          },
-          "status": Array [],
-          "streams": Object {
-            "audio": MediaStream {
-              "tracks": Array [
-                Object {
+          "consumers": Object {
+            "audio": Object {
+              "consumer": Object {
+                "close": [MockFunction],
+                "track": Object {
                   "kind": "audio",
                 },
-              ],
+              },
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "kind": "audio",
+                  },
+                ],
+              },
             },
-            "screenshare": MediaStream {
-              "tracks": Array [],
+            "screenshare": Object {
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [],
+              },
             },
-            "video": MediaStream {
-              "tracks": Array [
-                Object {
+            "video": Object {
+              "consumer": Object {
+                "close": [MockFunction],
+                "track": Object {
                   "kind": "video",
                 },
-              ],
+              },
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "kind": "video",
+                  },
+                ],
+              },
             },
           },
+          "status": Array [],
           "user": Object {
             "detail": undefined,
             "id": "USER-01",
@@ -415,12 +471,16 @@ describe("useConnectCall", () => {
     );
     await waitFor(() =>
       expect(
-        result.current.peers[0].streams[ProducerLabel.video].getTracks()
+        result.current.peers[0].consumers[
+          ProducerLabel.video
+        ].stream.getTracks()
       ).toHaveLength(1)
     );
     await waitFor(() =>
       expect(
-        result.current.peers[0].streams[ProducerLabel.audio].getTracks()
+        result.current.peers[0].consumers[
+          ProducerLabel.audio
+        ].stream.getTracks()
       ).toHaveLength(1)
     );
     expect(result.current.peers).toMatchInlineSnapshot(`
@@ -430,30 +490,47 @@ describe("useConnectCall", () => {
             "ping": NaN,
             "quality": "unknown",
           },
-          "pausedStates": Object {
-            "audio": false,
-            "video": true,
-          },
-          "status": Array [],
-          "streams": Object {
-            "audio": MediaStream {
-              "tracks": Array [
-                Object {
+          "consumers": Object {
+            "audio": Object {
+              "consumer": Object {
+                "close": [MockFunction],
+                "track": Object {
                   "kind": "audio",
                 },
-              ],
+              },
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "kind": "audio",
+                  },
+                ],
+              },
             },
-            "screenshare": MediaStream {
-              "tracks": Array [],
+            "screenshare": Object {
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [],
+              },
             },
-            "video": MediaStream {
-              "tracks": Array [
-                Object {
+            "video": Object {
+              "consumer": Object {
+                "close": [MockFunction],
+                "track": Object {
                   "kind": "video",
                 },
-              ],
+              },
+              "paused": true,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "kind": "video",
+                  },
+                ],
+              },
             },
           },
+          "status": Array [],
           "user": Object {
             "detail": undefined,
             "id": "USER-01",

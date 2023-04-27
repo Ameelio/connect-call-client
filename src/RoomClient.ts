@@ -48,8 +48,13 @@ const config: Record<MediaKind, ProducerOptions> = {
 
 export type Peer = {
   user: Participant;
-  streams: Record<ProducerLabel, MediaStream>;
-  pausedStates: Partial<Record<ProducerLabel, boolean>>;
+  consumers: Record<
+    ProducerLabel,
+    {
+      stream: MediaStream;
+      paused: boolean;
+    }
+  >;
   connectionState: ConnectionState;
   status: UserStatus[];
 };
@@ -94,13 +99,42 @@ type Events = {
   onPeerConnectionState: ConnectionState & { user: Participant };
 };
 
+function emptyConsumerRecord(): {
+  stream: MediaStream;
+  consumer?: Consumer;
+  paused: boolean;
+} {
+  return {
+    stream: new MediaStream(),
+    paused: false,
+  };
+}
+
+function emptyConsumersRecord(): Record<
+  ProducerLabel,
+  { stream: MediaStream; consumer?: Consumer; paused: boolean }
+> {
+  return {
+    [ProducerLabel.video]: emptyConsumerRecord(),
+    [ProducerLabel.audio]: emptyConsumerRecord(),
+    [ProducerLabel.screenshare]: emptyConsumerRecord(),
+  };
+}
+
 class RoomClient {
   producers: Partial<Record<ProducerLabel, Producer>> = {};
   disableFrux: boolean;
   private peers: Record<
     string,
     Peer & {
-      consumers: Partial<Record<ProducerLabel, Consumer>>;
+      consumers: Record<
+        ProducerLabel,
+        {
+          stream: MediaStream;
+          consumer?: Consumer;
+          paused: boolean;
+        }
+      >;
     }
   > = {};
   // We don't actually know anything about a monitor except their id.
@@ -323,14 +357,8 @@ class RoomClient {
         if (!this.peers[id]) {
           this.peers[id] = {
             user: { id, role },
-            consumers: {},
-            streams: {
-              [ProducerLabel.video]: new MediaStream(),
-              [ProducerLabel.audio]: new MediaStream(),
-              [ProducerLabel.screenshare]: new MediaStream(),
-            },
+            consumers: emptyConsumersRecord(),
             status,
-            pausedStates: {},
             connectionState: { quality: "unknown", ping: NaN },
           };
           this.emitter.emit("onPeerConnect", { id, role });
@@ -354,27 +382,24 @@ class RoomClient {
       if (!this.peers[user.id]) {
         this.peers[user.id] = {
           user,
-          consumers: {},
-          streams: {
-            [ProducerLabel.video]: new MediaStream(),
-            [ProducerLabel.audio]: new MediaStream(),
-            [ProducerLabel.screenshare]: new MediaStream(),
-          },
-          pausedStates: {},
+          consumers: emptyConsumersRecord(),
           status: [],
           connectionState: { quality: "unknown", ping: NaN },
         };
         this.emitter.emit("onPeerConnect", user);
       }
 
-      const existingConsumer = this.peers[user.id].consumers[label];
+      const existingConsumer = this.peers[user.id].consumers[label].consumer;
       if (existingConsumer) {
-        this.peers[user.id].streams[label].removeTrack(existingConsumer.track);
+        this.peers[user.id].consumers[label].stream.removeTrack(
+          existingConsumer.track
+        );
       }
 
-      this.peers[user.id].consumers[label] = consumer;
-      this.peers[user.id].pausedStates[label] = paused;
-      this.peers[user.id].streams[label].addTrack(consumer.track);
+      this.peers[user.id].consumers[label].consumer = consumer;
+      this.peers[user.id].consumers[label].paused = paused;
+      this.peers[user.id].consumers[label].stream.addTrack(consumer.track);
+
       this.emitter.emit("onPeerUpdate", this.peers[user.id]);
     });
 
@@ -382,8 +407,8 @@ class RoomClient {
     client.on("producerUpdate", async ({ from, paused, label, reason }) => {
       const peer = this.peers[from.id];
       if (!peer) throw new Error(`Unknown peer update ${from.id}`);
-      const track = peer.consumers[label]?.track;
-      peer.pausedStates[label] = paused;
+      const track = peer.consumers[label].consumer?.track;
+      peer.consumers[label].paused = paused;
       if (!paused) {
         peer.connectionState.videoDisabled = false;
       } else if (reason === "paused_video_bad_connection") {
@@ -396,17 +421,17 @@ class RoomClient {
     client.on("producerClose", async ({ from, label }) => {
       const peer = this.peers[from.id];
       if (!peer) throw new Error(`Unknown peer update ${from.id}`);
-      const consumer = peer.consumers[label];
+      const consumer = peer.consumers[label].consumer;
       if (!consumer) return;
 
       consumer.close();
 
       const track = consumer.track;
       if (track) {
-        peer.streams[label].removeTrack(track);
+        peer.consumers[label].stream.removeTrack(track);
       }
-      delete peer.consumers[label];
-      delete peer.pausedStates[label];
+      peer.consumers[label].consumer = undefined;
+      peer.consumers[label].paused = false;
       this.emitter.emit("onPeerUpdate", peer);
     });
 
@@ -414,8 +439,9 @@ class RoomClient {
     client.on("participantDisconnect", async (user) => {
       const peer = this.peers[user.id];
       if (peer) {
-        peer.consumers.audio?.close();
-        peer.consumers.video?.close();
+        Object.values(ProducerLabel).forEach((label) => {
+          peer.consumers[label].consumer?.close();
+        });
         delete this.peers[user.id];
         this.emitter.emit("onPeerDisconnect", user);
       } else if (this.monitors.has(user.id)) {
@@ -448,14 +474,8 @@ class RoomClient {
         } else {
           this.peers[user.id] = {
             user,
-            consumers: {},
-            streams: {
-              [ProducerLabel.video]: new MediaStream(),
-              [ProducerLabel.audio]: new MediaStream(),
-              [ProducerLabel.screenshare]: new MediaStream(),
-            },
+            consumers: emptyConsumersRecord(),
             status: status,
-            pausedStates: {},
             connectionState: { quality: "unknown", ping: NaN },
           };
         }
@@ -638,7 +658,7 @@ class RoomClient {
     spatialLayer: number;
     temporalLayer?: number;
   }) {
-    const consumer = this.peers[peerId]?.consumers[label];
+    const consumer = this.peers[peerId]?.consumers[label].consumer;
     if (!consumer) return;
 
     await this.client.emit("setPreferredSimulcastLayer", {
@@ -659,8 +679,9 @@ class RoomClient {
     this.emitter.all.clear();
     this.client.connectionMonitor.stop();
     Object.values(this.peers).forEach((peer) => {
-      peer.consumers.audio?.close();
-      peer.consumers.video?.close();
+      Object.values(ProducerLabel).forEach((label) => {
+        peer.consumers[label].consumer?.close();
+      });
     });
   }
 
