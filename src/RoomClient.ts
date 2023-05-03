@@ -166,24 +166,35 @@ class RoomClient {
       this.emitter.emit("timer", { name, msRemaining, msElapsed });
     });
 
-    client.on("state", (state: PublishedRoomState) => {
+    client.on("state", async (state: PublishedRoomState) => {
+      const presentIds = new Set<string>();
       this.emitter.emit(
         "peers",
         Object.fromEntries(
-          Object.entries(state.participants).map(([key, val]) => [
-            key,
-            {
-              ...val,
-              consumers: Object.fromEntries(
-                Object.entries(val.consumers).map(([label, data]) => [
-                  label,
-                  this.updateOrMakeConsumer(data),
-                ])
-              ),
-            },
-          ])
+          await Promise.all(
+            Object.entries(state.participants).map(async ([key, val]) => [
+              key,
+              {
+                ...val,
+                consumers: Object.fromEntries(
+                  await Promise.all(
+                    Object.entries(val.consumers).map(async ([label, data]) => {
+                      presentIds.add(data.id);
+                      return [label, await this.updateOrMakeConsumer(data)];
+                    })
+                  )
+                ),
+              },
+            ])
+          )
         )
       );
+      Array.from(this.consumers.entries()).forEach(([key, { consumer }]) => {
+        if (!presentIds.has(key)) {
+          consumer.close();
+          this.consumers.delete(key);
+        }
+      });
     });
 
     if (this.user.role === "monitor") {
