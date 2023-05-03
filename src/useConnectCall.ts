@@ -1,13 +1,7 @@
 import { MediaKind } from "mediasoup-client/lib/types";
 import { useCallback, useEffect, useState } from "react";
-import {
-  CallStatus,
-  Participant,
-  ProducerLabel,
-  Role,
-  UserStatus,
-} from "./API";
-import RoomClient, { ConnectionState, Peer } from "./RoomClient";
+import { CallStatus, ProducerLabel, Role, User, UserStatus } from "./API";
+import RoomClient, { Peer } from "./RoomClient";
 
 export type AudioTrack = {
   stream: MediaStream;
@@ -32,10 +26,10 @@ type Props = {
     url: string;
     token: string;
   };
-  user: Pick<Participant, "id">;
+  user: Pick<User, "id">;
   onMonitorJoined?: (user: string) => void;
-  onPeerConnected?: (user: Participant) => void;
-  onPeerDisconnected?: (user: Participant) => void;
+  onPeerConnected?: (user: User) => void;
+  onPeerDisconnected?: (user: User) => void;
   onTimer?: (
     name: "maxDuration",
     msRemaining: number,
@@ -45,7 +39,7 @@ type Props = {
 };
 
 export type Message = {
-  user: Participant;
+  user: Omit<User, "type">;
   contents: string;
   timestamp: Date;
 };
@@ -61,7 +55,6 @@ export type ConnectCall = {
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
   localScreenshare: VideoTrack | undefined;
-  connectionState: ConnectionState;
   toggleAudio: () => void;
   toggleVideo: () => void;
   closeProducer: (label: ProducerLabel) => Promise<void>;
@@ -69,7 +62,7 @@ export type ConnectCall = {
     track: MediaStreamTrack,
     label: ProducerLabel
   ) => Promise<void>;
-  peers: Peer[];
+  peers: Record<string, Peer>;
   monitors: string[];
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
@@ -110,24 +103,7 @@ const useConnectCall = ({
   const [localAudio, setLocalAudio] = useState<AudioTrack>();
   const [localVideo, setLocalVideo] = useState<VideoTrack>();
   const [localScreenshare, setLocalScreenshare] = useState<VideoTrack>();
-  const [connectionState, setConnectionState] = useState<ConnectionState>({
-    quality: "unknown",
-    ping: NaN,
-  });
-  const [peers, setPeers] = useState<
-    {
-      user: Participant;
-      consumers: Record<
-        ProducerLabel,
-        {
-          stream: MediaStream;
-          paused: boolean;
-        }
-      >;
-      connectionState: ConnectionState;
-      status: UserStatus[];
-    }[]
-  >([]);
+  const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [monitors, setMonitors] = useState<string[]>([]);
 
   useEffect(() => {
@@ -173,51 +149,9 @@ const useConnectCall = ({
     }
   };
 
-  const handlePeerDisconnect = (user: Participant) =>
-    setPeers((peers) => peers.filter((p) => p.user.id !== user.id));
-
-  const handlePeerUpdate = ({
-    user,
-    consumers,
-    connectionState,
-    status,
-  }: Peer) => {
-    setPeers((peers) => {
-      return [
-        ...peers.filter((p) => p.user.id !== user.id),
-        {
-          user,
-          consumers,
-          connectionState,
-          status,
-        },
-      ];
-    });
-  };
-
-  const handleMonitorJoin = (id: string) => {
-    setMonitors([...monitors.filter((x) => x !== id), id]);
-  };
-
-  const handleMonitorDisconnect = (id: string) => {
-    setMonitors(monitors.filter((x) => x !== id));
-  };
-
-  const handleUserUpdate = (user: {
-    id: string;
-    role: Role;
-    status: UserStatus[];
-  }) => {
-    // Unpack and repack properties so as to force reference change
-    setTrackedUser({ ...user });
-  };
-
   const handleStatusChange = (status: CallStatus) => setStatus(status);
 
-  const handleTextMessage = (message: {
-    user: Participant;
-    contents: string;
-  }) =>
+  const handleTextMessage = (message: { user: User; contents: string }) =>
     setMessages((existing) => [
       ...existing,
       {
@@ -241,22 +175,6 @@ const useConnectCall = ({
     [onTimer]
   );
 
-  const handleConnectionState = useCallback(
-    (connectionState: ConnectionState) => {
-      if (disableFrux) return;
-
-      setConnectionState(connectionState);
-      if (localVideo && connectionState.videoDisabled && !localVideo.paused) {
-        setLocalVideo({
-          ...localVideo,
-          paused: true,
-        });
-      }
-      // TODO screenshare FRUX things
-    },
-    [setConnectionState, localVideo, disableFrux]
-  );
-
   const [debounceReady, setDebounceReady] = useState(false);
 
   useEffect(() => {
@@ -277,7 +195,6 @@ const useConnectCall = ({
     })
       .then((client) => {
         setClient(client);
-        setPeers(client.getPeers());
         setTrackedUser(client.user);
       })
       .catch(handleError);
@@ -316,60 +233,14 @@ const useConnectCall = ({
     return () => void disconnect();
   }, [client, disconnect]);
 
-  // hook into the client
-  useEffect(() => {
-    if (!client) return;
-    client.on("onPeerDisconnect", handlePeerDisconnect);
-    client.on("onPeerUpdate", handlePeerUpdate);
-    client.on("onMonitorJoin", handleMonitorJoin);
-    client.on("onMonitorDisconnect", handleMonitorDisconnect);
-    client.on("onUserUpdate", handleUserUpdate);
-    client.on("onStatusChange", handleStatusChange);
-    client.on("onTextMessage", handleTextMessage);
-    client.on("onTimer", handleTimer);
-    client.on("onProducerUpdate", handleProducerUpdate);
-    client.on("onConnectionState", handleConnectionState);
-    return () => {
-      client.off("onPeerDisconnect", handlePeerDisconnect);
-      client.off("onPeerUpdate", handlePeerUpdate);
-      client.off("onUserUpdate", handleUserUpdate);
-      client.off("onStatusChange", handleStatusChange);
-      client.off("onTextMessage", handleTextMessage);
-      client.off("onTimer", handleTimer);
-      client.off("onProducerUpdate", handleProducerUpdate);
-      client.off("onConnectionState", handleConnectionState);
-    };
-  }, [client, handleTimer, handleConnectionState]);
-
-  // announce monitor joins
-  useEffect(() => {
-    if (!client || !onMonitorJoined) return;
-    client.on("onMonitorJoin", onMonitorJoined);
-    return () => client.off("onMonitorJoin", onMonitorJoined);
-  }, [client, onMonitorJoined]);
-
-  // announce peer connects
-  useEffect(() => {
-    if (!client || !onPeerConnected) return;
-    client.on("onPeerConnect", onPeerConnected);
-    return () => client.off("onPeerConnect", onPeerConnected);
-  }, [client, onPeerConnected]);
-
-  // announce peer disconnects
-  useEffect(() => {
-    if (!client || !onPeerDisconnected) return;
-    client.on("onPeerDisconnect", onPeerDisconnected);
-    return () => client.off("onPeerDisconnect", onPeerDisconnected);
-  }, [client, onPeerDisconnected]);
-
   // announce text messages
   useEffect(() => {
     if (!client || !onNewMessage) return;
-    const handler = (msg: { user: Participant; contents: string }) => {
+    const handler = (msg: { user: User; contents: string }) => {
       onNewMessage({ ...msg, timestamp: new Date() });
     };
-    client.on("onTextMessage", handler);
-    return () => client.off("onTextMessage", handler);
+    client.on("textMessage", handler);
+    return () => client.off("textMessage", handler);
   });
 
   const sendMessage = useCallback(
@@ -404,9 +275,12 @@ const useConnectCall = ({
       temporalLayer?: number;
     }) => {
       if (!client) throw new Error("Not connected");
+      const peer = peers[peerId];
+      if (!peer) throw new Error("no such peer");
+      const consumerId = peer.consumers[label]?.id;
+      if (!consumerId) throw new Error("no such consumer");
       await client.setPreferredSimulcastLayer({
-        peerId,
-        label,
+        consumerId,
         spatialLayer,
         temporalLayer,
       });
@@ -492,7 +366,9 @@ const useConnectCall = ({
   const produceTrack = useCallback(
     async (track: MediaStreamTrack, label: ProducerLabel) => {
       if (!client) throw new Error("Not connected");
+      console.log("awaiting produce");
       await client.produce(track, label);
+      console.log("finishing produce");
       const stream = new MediaStream();
       stream.addTrack(track);
       if (label === ProducerLabel.audio) {
@@ -538,7 +414,6 @@ const useConnectCall = ({
     localVideo,
     localScreenshare,
     closeProducer,
-    connectionState,
     toggleAudio,
     toggleVideo,
     produceTrack,

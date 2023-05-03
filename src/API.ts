@@ -1,12 +1,17 @@
 import {
-  ConsumerOptions,
   DtlsParameters,
   MediaKind,
   RtpCapabilities,
   RtpParameters,
   TransportOptions,
 } from "mediasoup-client/lib/types";
-import { ConnectionState } from "./RoomClient";
+
+export type CallStatus =
+  | "live"
+  | "missing_monitor"
+  | "ended"
+  | "terminated"
+  | "no_show";
 
 export enum ProducerLabel {
   video = "video",
@@ -34,18 +39,31 @@ export enum UserStatus {
   HandRaised = "HandRaised",
 }
 
-export interface Participant {
-  role: Role;
+export type User = {
   id: string;
-  detail?: ParticipantEventDetail;
-}
+  role: Role;
+};
 
-export type CallStatus =
-  | "live"
-  | "missing_monitor"
-  | "ended"
-  | "terminated"
-  | "no_show";
+export type PublishedConsumerInfo = {
+  id: string;
+  producerId: string;
+  kind: MediaKind;
+  rtpParameters: RtpParameters;
+  producerPaused: boolean;
+  paused: boolean;
+};
+
+export type PublishedParticipant = {
+  user: User;
+  consumers: Partial<Record<ProducerLabel, PublishedConsumerInfo>>;
+  status: UserStatus[];
+};
+
+export type PublishedRoomState = {
+  participants: Record<string, PublishedParticipant>;
+  status: CallStatus;
+  // TODO max duration
+};
 
 export type WebRtcInfo = Pick<
   TransportOptions,
@@ -56,52 +74,19 @@ const producerUpdateReasons = ["paused_video_bad_connection"] as const;
 export type PRODUCER_UPDATE_REASONS = typeof producerUpdateReasons[number];
 
 export type ServerMessages = {
-  callStatus: CallStatus;
-  consume: Required<Omit<ConsumerOptions, "appData">> & {
-    label: ProducerLabel;
-    user: Participant;
-    paused: boolean;
-  };
-  participantDisconnect: Participant;
-  joined: Participant & { callId: string; status: UserStatus[] };
-  producerUpdate: {
-    producerId: string;
-    from: Participant;
-    paused: boolean;
-    type: MediaKind;
-    label: ProducerLabel;
-    timestamp: string;
-    reason?: PRODUCER_UPDATE_REASONS;
-  };
-  producerClose: {
-    producerId: string;
-    from: Participant;
-    kind: MediaKind;
-    label: ProducerLabel;
-  };
   textMessage: {
-    from: Participant;
+    from: User;
     contents: string;
   };
-  userStatus: {
-    user: Participant;
-
-    // NOTE: we accept arbitrary strings instead of
-    // statuses, for forward-compatibility.
-    // `connect-call-handler` needs some amount of
-    // forward-compatibility because it is used in connect-mobile.
-    // We will ignore statuses that we don't know about.
-    status: (UserStatus | string)[];
-  };
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
-  peerConnectionState: { from: Participant } & ConnectionState;
+  state: PublishedRoomState;
 };
 
 export type ClientMessages = {
   join: [
     { callId: string; token: string },
     {
-      role: Participant["role"];
+      role: Role;
       userId: string;
       status: UserStatus[];
       consumerTransportInfo: WebRtcInfo;
@@ -163,5 +148,4 @@ export type ClientMessages = {
     },
     { success: true }
   ];
-  connectionState: [ConnectionState, { success: true }];
 };
