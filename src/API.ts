@@ -84,7 +84,7 @@ export type ServerMessages = {
 
 export type ClientMessages = {
   join: [
-    { callId: string; token: string },
+    { token: string },
     {
       role: Role;
       userId: string;
@@ -113,17 +113,15 @@ export type ClientMessages = {
   ];
   establishDtls: [
     {
-      callId: string;
       transportId: string;
       dtlsParameters: DtlsParameters;
     },
     { success: true }
   ];
-  finishConnecting: [{ callId: string }, { success: true }];
+  finishConnecting: [{}, { success: true }];
   heartbeat: [Record<string, never>, Record<string, never>];
   produce: [
     {
-      callId: string;
       kind: MediaKind;
       rtpParameters: RtpParameters;
       label: ProducerLabel;
@@ -132,14 +130,12 @@ export type ClientMessages = {
   ];
   producerClose: [
     {
-      callId: string;
       producerId: string;
     },
     { success: true }
   ];
   producerUpdate: [
     {
-      callId: string;
       paused: boolean;
       producerId: string;
       type: MediaKind;

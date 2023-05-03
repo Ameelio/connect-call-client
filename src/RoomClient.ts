@@ -12,6 +12,7 @@ import {
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
   PublishedConsumerInfo,
+  PublishedParticipant,
   PublishedRoomState,
   Role,
   User,
@@ -64,7 +65,8 @@ export type Peer = {
 type Events = {
   textMessage: { user: User; contents: string };
   timer: { name: string; msRemaining: number; msElapsed: number };
-  peers: Record<string, Peer>;
+  peers: Peer[];
+  self: PublishedParticipant;
 };
 
 function emptyConsumerRecord(): {
@@ -95,22 +97,19 @@ class RoomClient {
     new Map();
   disableFrux: boolean;
   private peers: Record<string, Peer> = {};
-  // We don't actually know anything about a monitor except their id.
-  private monitors: Set<string> = new Set();
   public user: {
     id: string;
     role: Role;
     status: UserStatus[];
   };
-  private callId: string;
   private client: Client;
+
   private producerTransport: Transport | null;
   private consumerTransport: Transport;
+
   private emitter: Emitter<Events>;
-  private heartbeat?: NodeJS.Timer;
 
   protected constructor({
-    callId,
     client,
     producerTransport,
     consumerTransport,
@@ -118,7 +117,6 @@ class RoomClient {
     userId,
     status,
   }: {
-    callId: string;
     client: Client;
     producerTransport: Transport | null;
     consumerTransport: Transport;
@@ -127,7 +125,6 @@ class RoomClient {
     status: UserStatus[];
   }) {
     this.disableFrux = false;
-    this.callId = callId;
     this.client = client;
     this.producerTransport = producerTransport;
     this.consumerTransport = consumerTransport;
@@ -148,7 +145,6 @@ class RoomClient {
         // TODO this event will need to inform the server
         // about whether this is a screenshare stream
         const { producerId } = await client.emit("produce", {
-          callId: this.callId,
           kind,
           rtpParameters,
           label: appData.label,
@@ -168,27 +164,38 @@ class RoomClient {
 
     client.on("state", async (state: PublishedRoomState) => {
       const presentIds = new Set<string>();
+
+      // Everyone but self
       this.emitter.emit(
         "peers",
-        Object.fromEntries(
-          await Promise.all(
-            Object.entries(state.participants).map(async ([key, val]) => [
-              key,
-              {
-                ...val,
-                consumers: Object.fromEntries(
-                  await Promise.all(
-                    Object.entries(val.consumers).map(async ([label, data]) => {
-                      presentIds.add(data.id);
-                      return [label, await this.updateOrMakeConsumer(data)];
-                    })
-                  )
-                ),
-              },
-            ])
-          )
+        await Promise.all(
+          Object.entries(state.participants)
+            .filter(([key, _]) => key !== client.socket.id)
+            .map(async ([_, val]) => ({
+              ...val,
+              consumers: Object.fromEntries(
+                await Promise.all(
+                  Object.entries(val.consumers).map(async ([label, data]) => {
+                    presentIds.add(data.id);
+                    return [label, await this.updateOrMakeConsumer(data)];
+                  })
+                )
+              ),
+            }))
         )
       );
+
+      // Self
+      const selfReport = state.participants[client.socket.id];
+
+      if (selfReport) {
+        this.emitter.emit("self", selfReport);
+      }
+
+      // ROom status
+      this.emitter.emit("status", state.status);
+
+      // Clean up missing peers
       Array.from(this.consumers.entries()).forEach(([key, { consumer }]) => {
         if (!presentIds.has(key)) {
           consumer.close();
@@ -197,14 +204,8 @@ class RoomClient {
       });
     });
 
-    if (this.user.role === "monitor") {
-      this.heartbeat = setInterval(() => {
-        client.emit("heartbeat", {});
-      }, 1000);
-    }
-
     // now that our handlers are prepared, we're reading to begin consuming
-    void client.emit("finishConnecting", { callId });
+    void client.emit("finishConnecting", {});
   }
 
   on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
@@ -301,7 +302,6 @@ class RoomClient {
 
     await producer.close();
     await this.client.emit("producerClose", {
-      callId: this.callId,
       producerId: producer.id,
     });
     delete this.producers[label];
@@ -403,7 +403,6 @@ class RoomClient {
   }
 
   async close() {
-    if (this.heartbeat) clearInterval(this.heartbeat);
     this.client.close();
     this.consumerTransport.close();
     this.producerTransport?.close();
@@ -424,7 +423,6 @@ class RoomClient {
   ) {
     paused ? producer.pause() : producer.resume();
     await this.client.emit("producerUpdate", {
-      callId: this.callId,
       producerId: producer.id,
       paused,
       label: producer.appData.label,
@@ -450,7 +448,6 @@ class RoomClient {
       consumerTransportInfo,
       routerRtpCapabilities,
     } = await client.emit("join", {
-      callId: call.id,
       token: call.token,
     });
 
@@ -470,7 +467,6 @@ class RoomClient {
         client
           .emit("establishDtls", {
             dtlsParameters,
-            callId: call.id,
             transportId: transportId,
           })
           .then(onSuccess, onFailure);
@@ -497,7 +493,6 @@ class RoomClient {
     });
 
     return new RoomClient({
-      callId: call.id,
       client,
       producerTransport,
       consumerTransport,
