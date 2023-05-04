@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
 import { act as actHook, renderHook } from "@testing-library/react-hooks/pure";
 import { advanceTo } from "jest-date-mock";
-import { Role } from "./API";
+import { ProducerLabel, Role, UserStatus } from "./API";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
 import useConnectCall from "./useConnectCall";
@@ -67,7 +67,7 @@ describe("useConnectCall", () => {
     await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
   });
 
-  it("receives joined events", async () => {
+  it("receives peers and room status", async () => {
     const { result } = renderHook(() =>
       useConnectCall({
         call,
@@ -77,20 +77,44 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    // TODO
-  });
 
-  it("receives fast joined events", async () => {
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call,
-        user,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
+    expect(result.current.clientStatus).toBe("initializing");
+
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
+
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "socket-id": {
+            user: {
+              id: "test-id",
+              role: Role.webinarAttendee,
+            },
+            status: [UserStatus.AudioMutedByServer],
+            consumers: {},
+          },
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.webinarAttendee,
+            },
+            status: [UserStatus.AudioMutedByServer],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() => expect(result.current.callStatus).toBe("live"));
+    await waitFor(() =>
+      expect(Object.values(result.current.peers)).toHaveLength(1)
     );
-    // TODO
+    await waitFor(() =>
+      expect(Object.values(result.current.peers)[0].status).toEqual([
+        UserStatus.AudioMutedByServer,
+      ])
+    );
   });
 
   it("produces and toggles audio", async () => {
@@ -103,7 +127,28 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    // TODO
+
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
+
+    // produce
+    const track = (
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+    ).getAudioTracks()[0];
+    await actHook(() =>
+      result.current.produceTrack(track, ProducerLabel.audio)
+    );
+
+    expect(result.current.localProducers[ProducerLabel.audio]?.paused).toBe(
+      false
+    );
+    await actHook(() => result.current.pauseProducer(ProducerLabel.audio));
+    expect(result.current.localProducers[ProducerLabel.audio]?.paused).toBe(
+      true
+    );
+    await actHook(() => result.current.resumeProducer(ProducerLabel.audio));
+    expect(result.current.localProducers[ProducerLabel.audio]?.paused).toBe(
+      false
+    );
   });
 
   it("produces and toggles video", async () => {
@@ -116,20 +161,28 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    // TODO
-  });
 
-  it("tracks call status changes", async () => {
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call,
-        user,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
+
+    // produce
+    const track = (
+      await navigator.mediaDevices.getUserMedia({ video: true })
+    ).getVideoTracks()[0];
+    await actHook(() =>
+      result.current.produceTrack(track, ProducerLabel.video)
     );
-    // TODO
+
+    expect(result.current.localProducers[ProducerLabel.video]?.paused).toBe(
+      false
+    );
+    await actHook(() => result.current.pauseProducer(ProducerLabel.video));
+    expect(result.current.localProducers[ProducerLabel.video]?.paused).toBe(
+      true
+    );
+    await actHook(() => result.current.resumeProducer(ProducerLabel.video));
+    expect(result.current.localProducers[ProducerLabel.video]?.paused).toBe(
+      false
+    );
   });
 
   it("tracks peer media", async () => {
@@ -149,15 +202,408 @@ describe("useConnectCall", () => {
       })
     );
     // TODO
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
+
+    expect(result.current.peers).toMatchInlineSnapshot(`Object {}`);
+
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "socket-id": {
+            user: {
+              id: "test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {},
+          },
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() => expect(result.current.callStatus).toBe("live"));
+    await waitFor(() =>
+      expect(Object.values(result.current.peers)).toHaveLength(1)
+    );
+    await waitFor(() =>
+      expect(
+        Object.values(result.current.peers["socket-id"]!.consumers)
+      ).toHaveLength(0)
+    );
+
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "socket-id": {
+            user: {
+              id: "test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {
+              [ProducerLabel.audio]: {
+                id: "consumer-audio-id",
+                producerId: "producer-audio-id",
+                kind: "audio",
+                producerPaused: false,
+                rtpParameters: { codecs: [] },
+                paused: false,
+              },
+            },
+          },
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() =>
+      expect(result.current.peers["socket-id"]?.consumers.audio).toBeTruthy()
+    );
+
+    expect(result.current.peers).toMatchInlineSnapshot(`
+      Object {
+        "socket-id": Object {
+          "consumers": Object {
+            "audio": Object {
+              "id": "consumer-audio-id",
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "id": "consumer-audio-id",
+                    "kind": "audio",
+                    "paused": false,
+                    "producerId": "producer-audio-id",
+                    "producerPaused": false,
+                    "rtpParameters": Object {
+                      "codecs": Array [],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          "status": Array [],
+          "user": Object {
+            "id": "test-id",
+            "role": "visitParticipant",
+          },
+        },
+      }
+    `);
+
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "socket-id": {
+            user: {
+              id: "test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {
+              [ProducerLabel.audio]: {
+                id: "consumer-audio-id",
+                producerId: "producer-audio-id",
+                kind: "audio",
+                producerPaused: false,
+                rtpParameters: { codecs: [] },
+                paused: false,
+              },
+              [ProducerLabel.video]: {
+                id: "consumer-video-id",
+                producerId: "producer-video-id",
+                kind: "video",
+                producerPaused: false,
+                rtpParameters: { codecs: [] },
+                paused: false,
+              },
+            },
+          },
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() =>
+      expect(result.current.peers["socket-id"]?.consumers.video).toBeTruthy()
+    );
+    expect(result.current.peers).toMatchInlineSnapshot(`
+      Object {
+        "socket-id": Object {
+          "consumers": Object {
+            "audio": Object {
+              "id": "consumer-audio-id",
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "id": "consumer-audio-id",
+                    "kind": "audio",
+                    "paused": false,
+                    "producerId": "producer-audio-id",
+                    "producerPaused": false,
+                    "rtpParameters": Object {
+                      "codecs": Array [],
+                    },
+                  },
+                ],
+              },
+            },
+            "video": Object {
+              "id": "consumer-video-id",
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "id": "consumer-video-id",
+                    "kind": "video",
+                    "paused": false,
+                    "producerId": "producer-video-id",
+                    "producerPaused": false,
+                    "rtpParameters": Object {
+                      "codecs": Array [],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          "status": Array [],
+          "user": Object {
+            "id": "test-id",
+            "role": "visitParticipant",
+          },
+        },
+      }
+    `);
+
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "socket-id": {
+            user: {
+              id: "test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {
+              [ProducerLabel.audio]: {
+                id: "consumer-audio-id",
+                producerId: "producer-audio-id",
+                kind: "audio",
+                producerPaused: false,
+                rtpParameters: { codecs: [] },
+                paused: true,
+              },
+              [ProducerLabel.video]: {
+                id: "consumer-video-id",
+                producerId: "producer-video-id",
+                kind: "video",
+                producerPaused: false,
+                rtpParameters: { codecs: [] },
+                paused: true,
+              },
+            },
+          },
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        result.current.peers["socket-id"]?.consumers.video?.paused
+      ).toBeTruthy();
+      expect(
+        result.current.peers["socket-id"]?.consumers.audio?.paused
+      ).toBeTruthy();
+    });
+    expect(result.current.peers).toMatchInlineSnapshot(`
+      Object {
+        "socket-id": Object {
+          "consumers": Object {
+            "audio": Object {
+              "id": "consumer-audio-id",
+              "paused": true,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "id": "consumer-audio-id",
+                    "kind": "audio",
+                    "paused": false,
+                    "producerId": "producer-audio-id",
+                    "producerPaused": false,
+                    "rtpParameters": Object {
+                      "codecs": Array [],
+                    },
+                  },
+                ],
+              },
+            },
+            "video": Object {
+              "id": "consumer-video-id",
+              "paused": true,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "id": "consumer-video-id",
+                    "kind": "video",
+                    "paused": false,
+                    "producerId": "producer-video-id",
+                    "producerPaused": false,
+                    "rtpParameters": Object {
+                      "codecs": Array [],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          "status": Array [],
+          "user": Object {
+            "id": "test-id",
+            "role": "visitParticipant",
+          },
+        },
+      }
+    `);
+
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "socket-id": {
+            user: {
+              id: "test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {
+              [ProducerLabel.audio]: {
+                id: "consumer-audio-id",
+                producerId: "producer-audio-id",
+                kind: "audio",
+                producerPaused: false,
+                rtpParameters: { codecs: [] },
+                paused: false,
+              },
+              [ProducerLabel.video]: {
+                id: "consumer-video-id",
+                producerId: "producer-video-id",
+                kind: "video",
+                producerPaused: false,
+                rtpParameters: { codecs: [] },
+                paused: false,
+              },
+            },
+          },
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.visitParticipant,
+            },
+            status: [],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        result.current.peers["socket-id"]?.consumers.video?.paused
+      ).toBeFalsy();
+      expect(
+        result.current.peers["socket-id"]?.consumers.audio?.paused
+      ).toBeFalsy();
+    });
+
+    expect(result.current.peers).toMatchInlineSnapshot(`
+      Object {
+        "socket-id": Object {
+          "consumers": Object {
+            "audio": Object {
+              "id": "consumer-audio-id",
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "id": "consumer-audio-id",
+                    "kind": "audio",
+                    "paused": false,
+                    "producerId": "producer-audio-id",
+                    "producerPaused": false,
+                    "rtpParameters": Object {
+                      "codecs": Array [],
+                    },
+                  },
+                ],
+              },
+            },
+            "video": Object {
+              "id": "consumer-video-id",
+              "paused": false,
+              "stream": MediaStream {
+                "tracks": Array [
+                  Object {
+                    "id": "consumer-video-id",
+                    "kind": "video",
+                    "paused": false,
+                    "producerId": "producer-video-id",
+                    "producerPaused": false,
+                    "rtpParameters": Object {
+                      "codecs": Array [],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          "status": Array [],
+          "user": Object {
+            "id": "test-id",
+            "role": "visitParticipant",
+          },
+        },
+      }
+    `);
   });
 
   it("alerts when peers connect and disconnect", async () => {
-    const user = {
-      id: "USER-01",
-      type: "user" as const,
-      role: Role.visitParticipant,
-    };
-
     const { result } = renderHook(() =>
       useConnectCall({
         call,
@@ -167,28 +613,56 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    // TODO
-  });
 
-  it("handles peers disconnecting without producing", async () => {
-    const user = {
-      id: "USER-01",
-      type: "user" as const,
-      role: Role.visitParticipant,
-    };
-
-    const { result } = renderHook(() =>
-      useConnectCall({
-        call,
-        user,
-        onPeerConnected,
-        onPeerDisconnected,
-        onNewMessage,
-      })
-    );
     await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
 
-    // TODO
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "socket-id": {
+            user: {
+              id: "test-id",
+              role: Role.webinarAttendee,
+            },
+            status: [UserStatus.AudioMutedByServer],
+            consumers: {},
+          },
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.webinarAttendee,
+            },
+            status: [UserStatus.AudioMutedByServer],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() =>
+      expect(Object.values(result.current.peers)).toHaveLength(1)
+    );
+
+    act(() => {
+      client.sendServerEvent("state", {
+        participants: {
+          "self-socket-id": {
+            user: {
+              id: "self-test-id",
+              role: Role.webinarAttendee,
+            },
+            status: [UserStatus.AudioMutedByServer],
+            consumers: {},
+          },
+        },
+        status: "live",
+      });
+    });
+
+    await waitFor(() =>
+      expect(Object.values(result.current.peers)).toHaveLength(0)
+    );
   });
 
   it("delivers messages", async () => {
@@ -305,7 +779,17 @@ describe("useConnectCall", () => {
         onTimer,
       })
     );
-    // TODO
+
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
+
+    act(() => {
+      client.sendServerEvent("timer", {
+        name: "maxDuration",
+        msRemaining: 60 * 1000,
+        msElapsed: 60 * 1000,
+      });
+    });
+    expect(onTimer).toHaveBeenCalledTimes(1);
   });
 
   it("disconnects manually", async () => {
@@ -316,12 +800,5 @@ describe("useConnectCall", () => {
 
     await result.current.disconnect();
     expect(result.current.clientStatus).toBe("disconnected");
-  });
-
-  it("broadcasts connection state of a participant to peers", async () => {
-    const { result } = renderHook(() =>
-      useConnectCall({ call, user, onTimer })
-    );
-    // TODO
   });
 });

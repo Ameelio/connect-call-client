@@ -16,6 +16,7 @@ export function clientFactory() {
     },
   };
   return {
+    socket: { id: "self-socket-id" },
     sendServerEvent: <E extends keyof ServerMessages>(
       name: E,
       data: ServerMessages[E]

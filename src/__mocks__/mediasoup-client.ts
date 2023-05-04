@@ -1,18 +1,44 @@
 class Transport {
   on = jest.fn();
   close = jest.fn();
-  produce = jest.fn().mockImplementation((options) => ({
-    track: options,
-    close: jest.fn(),
-    pause: jest.fn(),
-    resume: jest.fn(),
-    kind: options.track.kind,
-    appData: options.appData,
-  }));
-  consume = jest.fn().mockImplementation((options) => ({
-    track: options,
-    close: jest.fn(),
-  }));
+  produce = jest.fn().mockImplementation((options) => {
+    const result = {
+      track: options,
+      close: jest.fn(),
+      paused: options.paused || false,
+      kind: options.track.kind,
+      appData: options.appData,
+      pause: () => {},
+      resume: () => {},
+    };
+    result.pause = () => {
+      result.paused = true;
+    };
+    result.resume = () => {
+      result.paused = false;
+    };
+
+    return result;
+  });
+  consume = jest.fn().mockImplementation((options) => {
+    const result = {
+      id: options.id,
+      track: options,
+      close: jest.fn(),
+      paused: options.paused || false,
+      appData: options.appData,
+      pause: () => {},
+      resume: () => {},
+    };
+    result.pause = () => {
+      result.paused = true;
+    };
+    result.resume = () => {
+      result.paused = false;
+    };
+
+    return result;
+  });
 }
 
 export class Device {

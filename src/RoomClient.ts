@@ -13,7 +13,6 @@ import {
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
   PublishedConsumerInfo,
-  PublishedParticipant,
   PublishedRoomState,
   Role,
   User,
@@ -67,34 +66,23 @@ type Events = {
   textMessage: { user: User; contents: string };
   timer: { name: string; msRemaining: number; msElapsed: number };
   peers: Peer[];
+  localProducers: Partial<
+    Record<ProducerLabel, { stream: MediaStream; paused: boolean }>
+  >;
   status: CallStatus;
-  self: PublishedParticipant;
+  self: Peer;
 };
 
-function emptyConsumerRecord(): {
-  stream: MediaStream;
-  consumer?: Consumer;
-  paused: boolean;
-} {
-  return {
-    stream: new MediaStream(),
-    paused: false,
-  };
-}
-
-function emptyConsumersRecord(): Record<
-  ProducerLabel,
-  { stream: MediaStream; consumer?: Consumer; paused: boolean }
-> {
-  return {
-    [ProducerLabel.video]: emptyConsumerRecord(),
-    [ProducerLabel.audio]: emptyConsumerRecord(),
-    [ProducerLabel.screenshare]: emptyConsumerRecord(),
-  };
-}
-
 class RoomClient {
-  producers: Partial<Record<ProducerLabel, Producer>> = {};
+  localProducers: Partial<
+    Record<
+      ProducerLabel,
+      {
+        stream: MediaStream;
+        producer: Producer;
+      }
+    >
+  > = {};
   consumers: Map<string, { consumer: Consumer; stream: MediaStream }> =
     new Map();
   disableFrux: boolean;
@@ -220,7 +208,17 @@ class RoomClient {
     const selfReport = state.participants[this.client.socket.id];
 
     if (selfReport) {
-      this.emitter.emit("self", selfReport);
+      this.emitter.emit("self", {
+        ...selfReport,
+        consumers: Object.fromEntries(
+          await Promise.all(
+            Object.entries(selfReport.consumers).map(async ([label, data]) => {
+              presentIds.add(data.id);
+              return [label, await this.updateOrMakeConsumer(data)];
+            })
+          )
+        ),
+      });
     }
 
     // Room status
@@ -275,19 +273,19 @@ class RoomClient {
     // locally mute.
     if (
       this.user.status.includes(UserStatus.AudioMutedByServer) &&
-      this.producers.audio &&
-      !this.producers.audio.paused
+      this.localProducers.audio &&
+      !this.localProducers.audio.producer.paused
     ) {
-      this.pauseAudio();
+      await this.pauseProducer(ProducerLabel.audio);
     }
 
     // Same with video mute
     if (
       this.user.status.includes(UserStatus.VideoMutedByServer) &&
-      this.producers.video &&
-      !this.producers.video.paused
+      this.localProducers.video &&
+      !this.localProducers.video.producer.paused
     ) {
-      this.pauseVideo();
+      await this.pauseProducer(ProducerLabel.video);
     }
   }
 
@@ -296,7 +294,7 @@ class RoomClient {
   async produce(track: MediaStreamTrack, label: ProducerLabel): Promise<void> {
     if (!this.producerTransport)
       throw new Error(`RoomClient is not able to produce media`);
-    if (this.producers[label])
+    if (this.localProducers[label])
       throw new Error(`RoomClient is already producing ${label}`);
 
     const producer = await this.producerTransport.produce({
@@ -304,52 +302,66 @@ class RoomClient {
       track,
       appData: { label },
     });
-    this.producers[label] = producer;
+    const stream = new MediaStream();
+    stream.addTrack(track);
+
+    this.localProducers[label] = {
+      stream,
+      producer,
+    };
 
     track.addEventListener("ended", () => {
-      const producer = this.producers[label];
-      if (producer && producer.track === track) {
+      const localProducer = this.localProducers[label];
+      if (localProducer && localProducer.producer.track === track) {
         this.closeProducer(label);
       }
     });
+
+    this.emitter.emit(
+      "localProducers",
+      Object.fromEntries(
+        Object.entries(this.localProducers).map(
+          ([label, { producer, stream }]) => [
+            label,
+            { paused: producer.paused, stream },
+          ]
+        )
+      )
+    );
   }
 
   async closeProducer(label: ProducerLabel): Promise<void> {
-    const producer = this.producers[label];
+    const localProducer = this.localProducers[label];
 
-    if (!producer) return;
+    if (!localProducer) return;
 
-    await producer.close();
+    await localProducer.producer.close();
     await this.client.emit("producerClose", {
-      producerId: producer.id,
+      producerId: localProducer.producer.id,
     });
-    delete this.producers[label];
+    delete this.localProducers[label];
   }
 
-  async pauseVideo(reason?: PRODUCER_UPDATE_REASONS) {
-    if (!this.producers.video) return;
-    await this.updateProducer(this.producers.video, true, reason);
+  async pauseProducer(label: ProducerLabel): Promise<void> {
+    const localProducer = this.localProducers[label];
+    if (!localProducer) return;
+    await this.updateProducer(localProducer.producer, true);
   }
 
-  async resumeVideo() {
-    if (!this.producers.video) return;
+  async resumeProducer(label: ProducerLabel) {
+    const localProducer = this.localProducers[label];
+    if (!localProducer) return;
+
     // Do not allow resuming video when remote video muted
-    if (this.user.status.includes(UserStatus.VideoMutedByServer)) return;
-    await this.updateProducer(this.producers.video, false);
-  }
-
-  async pauseAudio() {
-    if (!this.producers.audio) return;
-    await this.updateProducer(this.producers.audio, true);
-  }
-
-  async resumeAudio() {
-    if (!this.producers.audio) return;
-    // Do not allow resuming audio when remote muted
-    if (this.user.status.includes(UserStatus.AudioMutedByServer)) {
+    if (
+      (label === ProducerLabel.video &&
+        this.user.status.includes(UserStatus.VideoMutedByServer)) ||
+      (label === ProducerLabel.audio &&
+        this.user.status.includes(UserStatus.AudioMutedByServer))
+    )
       return;
-    }
-    await this.updateProducer(this.producers.audio, false);
+
+    await this.updateProducer(localProducer.producer, false);
   }
 
   // === Active network operations ===
@@ -425,9 +437,9 @@ class RoomClient {
     this.client.close();
     this.consumerTransport.close();
     this.producerTransport?.close();
-    this.producers.audio?.close();
-    this.producers.video?.close();
-    this.producers.screenshare?.close();
+    Object.values(this.localProducers).forEach(({ producer }) =>
+      producer.close()
+    );
     this.emitter.all.clear();
     this.client.connectionMonitor.stop();
     Array.from(this.consumers.values()).forEach(({ consumer }) =>
@@ -440,7 +452,11 @@ class RoomClient {
     paused: boolean,
     reason?: PRODUCER_UPDATE_REASONS
   ) {
-    paused ? producer.pause() : producer.resume();
+    if (paused) {
+      producer.pause();
+    } else {
+      producer.resume();
+    }
     await this.client.emit("producerUpdate", {
       producerId: producer.id,
       paused,
@@ -448,6 +464,17 @@ class RoomClient {
       type: producer.kind as MediaKind,
       ...(reason ? { reason: reason } : {}),
     });
+    this.emitter.emit(
+      "localProducers",
+      Object.fromEntries(
+        Object.entries(this.localProducers).map(
+          ([label, { producer, stream }]) => [
+            label,
+            { paused: producer.paused, stream },
+          ]
+        )
+      )
+    );
   }
 
   // === Initial handshake ===

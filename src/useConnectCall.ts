@@ -1,25 +1,6 @@
-import { MediaKind } from "mediasoup-client/lib/types";
 import { useCallback, useEffect, useState } from "react";
-import {
-  CallStatus,
-  ProducerLabel,
-  PublishedParticipant,
-  Role,
-  User,
-  UserStatus,
-} from "./API";
+import { CallStatus, ProducerLabel, Role, User } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
-
-export type AudioTrack = {
-  stream: MediaStream;
-  paused: boolean;
-};
-
-export type VideoTrack = {
-  stream: MediaStream;
-  paused: boolean;
-  aspectRatio?: number;
-};
 
 export enum ClientStatus {
   initializing = "initializing",
@@ -38,11 +19,7 @@ type Props = {
   onMonitorJoined?: (user: string) => void;
   onPeerConnected?: (user: User) => void;
   onPeerDisconnected?: (user: User) => void;
-  onTimer?: (
-    name: "maxDuration",
-    msRemaining: number,
-    msElapsed: number
-  ) => void;
+  onTimer?: (name: string, msRemaining: number, msElapsed: number) => void;
   onNewMessage?: (message: Message) => void;
 };
 
@@ -56,13 +33,13 @@ export type ConnectCall = {
   clientStatus: ClientStatus;
   callStatus?: CallStatus;
   error?: Error;
-  user?: PublishedParticipant;
-  localAudio: AudioTrack | undefined;
-  localVideo: VideoTrack | undefined;
-  localScreenshare: VideoTrack | undefined;
-  toggleAudio: () => void;
-  toggleVideo: () => void;
+  user?: Peer;
+  localProducers: Partial<
+    Record<ProducerLabel, { stream: MediaStream; paused: boolean }>
+  >;
   closeProducer: (label: ProducerLabel) => Promise<void>;
+  pauseProducer: (label: ProducerLabel) => void;
+  resumeProducer: (label: ProducerLabel) => void;
   produceTrack: (
     track: MediaStreamTrack,
     label: ProducerLabel
@@ -105,9 +82,9 @@ const useConnectCall = ({
 }: Props): ConnectCall => {
   const [disableFrux, setDisableFrux] = useState<boolean>(false);
   const [client, setClient] = useState<RoomClient>();
-  const [localAudio, setLocalAudio] = useState<AudioTrack>();
-  const [localVideo, setLocalVideo] = useState<VideoTrack>();
-  const [localScreenshare, setLocalScreenshare] = useState<VideoTrack>();
+  const [localProducers, setLocalProducers] = useState<
+    Partial<Record<ProducerLabel, { stream: MediaStream; paused: boolean }>>
+  >({});
   const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [monitors, setMonitors] = useState<Record<string, Peer>>({});
 
@@ -115,7 +92,7 @@ const useConnectCall = ({
     if (client) client.disableFrux = disableFrux;
   }, [disableFrux, client]);
 
-  const [trackedUser, setTrackedUser] = useState<PublishedParticipant>();
+  const [trackedUser, setTrackedUser] = useState<Peer>();
 
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -130,53 +107,6 @@ const useConnectCall = ({
     setError(e);
   };
 
-  const handleProducerUpdate = ({
-    paused,
-    label,
-  }: {
-    paused: boolean;
-    type: MediaKind;
-    label: ProducerLabel;
-  }) => {
-    if (label === ProducerLabel.video) {
-      setLocalVideo((existing) =>
-        existing ? { ...existing, paused } : undefined
-      );
-    } else if (label === ProducerLabel.screenshare) {
-      setLocalScreenshare((existing) =>
-        existing ? { ...existing, paused } : undefined
-      );
-    } else if (label === ProducerLabel.audio) {
-      setLocalAudio((existing) =>
-        existing ? { ...existing, paused } : undefined
-      );
-    }
-  };
-
-  const handleTextMessage = (message: { user: User; contents: string }) =>
-    setMessages((existing) => [
-      ...existing,
-      {
-        ...message,
-        timestamp: new Date(),
-      },
-    ]);
-
-  const handleTimer = useCallback(
-    ({
-      name,
-      msRemaining,
-      msElapsed,
-    }: {
-      name: "maxDuration";
-      msRemaining: number;
-      msElapsed: number;
-    }) => {
-      onTimer && onTimer(name, msRemaining, msElapsed);
-    },
-    [onTimer]
-  );
-
   const [debounceReady, setDebounceReady] = useState(false);
 
   useEffect(() => {
@@ -185,6 +115,56 @@ const useConnectCall = ({
     }, 10);
     return () => clearTimeout(debounceTimeout);
   }, []);
+
+  function bindClient(client: RoomClient) {
+    client.on("peers", (p) => {
+      setPeers(
+        Object.fromEntries(
+          Object.entries(p).filter(
+            ([key, { user }]) => user.role !== Role.monitor
+          )
+        )
+      );
+      setMonitors(
+        Object.fromEntries(
+          Object.entries(p).filter(
+            ([key, { user }]) => user.role === Role.monitor
+          )
+        )
+      );
+    });
+    client.on("self", (u) => setTrackedUser(u));
+    client.on("status", (s) => setCallStatus(s));
+    client.on("textMessage", (msg) => {
+      const stamped = {
+        ...msg,
+        timestamp: new Date(),
+      };
+      setMessages((existing) => [...existing, stamped]);
+      if (onNewMessage) onNewMessage(stamped);
+    });
+    client.on("localProducers", (p) => {
+      setLocalProducers(p);
+    });
+
+    client.on(
+      "timer",
+      ({
+        name,
+        msRemaining,
+        msElapsed,
+      }: {
+        name: string;
+        msRemaining: number;
+        msElapsed: number;
+      }) => {
+        onTimer && onTimer(name, msRemaining, msElapsed);
+      }
+    );
+
+    // Request most recent state
+    client.emitState();
+  }
 
   // create a client for the call
   useEffect(() => {
@@ -197,27 +177,7 @@ const useConnectCall = ({
     })
       .then((client) => {
         setClient(client);
-        client.on("peers", (p) => {
-          setPeers(
-            Object.fromEntries(
-              Object.entries(p).filter(
-                ([key, { user }]) => user.role !== Role.monitor
-              )
-            )
-          );
-          setMonitors(
-            Object.fromEntries(
-              Object.entries(p).filter(
-                ([key, { user }]) => user.role === Role.monitor
-              )
-            )
-          );
-        });
-        client.on("self", (u) => setTrackedUser(u));
-        client.on("status", (s) => setCallStatus(s));
-
-        // Request most recent state
-        client.emitState();
+        bindClient(client);
       })
       .catch(handleError);
   }, [call?.id, call?.url, call?.token, debounceReady]);
@@ -231,18 +191,6 @@ const useConnectCall = ({
   const closeProducer = useCallback(
     async (label: ProducerLabel) => {
       if (!client) return;
-
-      const producer = client.producers[label];
-
-      if (!producer) return;
-
-      if (label === ProducerLabel.video) {
-        setLocalScreenshare(undefined);
-      } else if (label === ProducerLabel.audio) {
-        setLocalAudio(undefined);
-      } else if (label === ProducerLabel.screenshare) {
-        setLocalScreenshare(undefined);
-      }
 
       await client.closeProducer(label);
     },
@@ -258,10 +206,7 @@ const useConnectCall = ({
   // announce text messages
   useEffect(() => {
     if (!client || !onNewMessage) return;
-    const handler = (msg: { user: User; contents: string }) => {
-      onNewMessage({ ...msg, timestamp: new Date() });
-    };
-    client.on("textMessage", handler);
+    const handler = (msg: { user: User; contents: string }) => {};
     return () => client.off("textMessage", handler);
   });
 
@@ -310,19 +255,21 @@ const useConnectCall = ({
     [client]
   );
 
-  const toggleAudio = useCallback(async () => {
-    if (!client) throw new Error("Not connected");
-    if (localAudio?.paused === undefined)
-      throw new Error("Not producing audio");
-    localAudio.paused ? await client.resumeAudio() : await client.pauseAudio();
-  }, [client, localAudio?.paused]);
+  const pauseProducer = useCallback(
+    async (label: ProducerLabel) => {
+      if (!client) throw new Error("Not connected");
+      await client.pauseProducer(label);
+    },
+    [client]
+  );
 
-  const toggleVideo = useCallback(async () => {
-    if (!client) throw new Error("Not connected");
-    if (localVideo?.paused === undefined)
-      throw new Error("Not producing video");
-    localVideo.paused ? await client.resumeVideo() : await client.pauseVideo();
-  }, [client, localVideo?.paused]);
+  const resumeProducer = useCallback(
+    async (label: ProducerLabel) => {
+      if (!client) throw new Error("Not connected");
+      await client.resumeProducer(label);
+    },
+    [client]
+  );
 
   // Operations
   const terminateCall = useCallback(async () => {
@@ -388,64 +335,45 @@ const useConnectCall = ({
   const produceTrack = useCallback(
     async (track: MediaStreamTrack, label: ProducerLabel) => {
       if (!client) throw new Error("Not connected");
-      console.log("awaiting produce");
       await client.produce(track, label);
-      console.log("finishing produce");
       const stream = new MediaStream();
       stream.addTrack(track);
-      if (label === ProducerLabel.audio) {
-        setLocalAudio({
-          stream,
-          paused: client.user.status.includes(UserStatus.AudioMutedByServer),
-        });
-      }
-      if (label === ProducerLabel.video) {
-        const trackSettings = track.getSettings();
-        const videoWidth = trackSettings.width;
-        const videoHeight = trackSettings.height;
-        const aspectRatio =
-          videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
-        setLocalVideo({
-          stream,
-          paused: client.user.status.includes(UserStatus.VideoMutedByServer),
-          aspectRatio,
-        });
-      }
-      if (label === ProducerLabel.screenshare) {
-        const trackSettings = track.getSettings();
-        const videoWidth = trackSettings.width;
-        const videoHeight = trackSettings.height;
-        const aspectRatio =
-          videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
-        setLocalScreenshare({
-          stream,
-          paused: false,
-          aspectRatio,
-        });
-      }
     },
     [client]
   );
 
   return {
+    // Connection and room status
     clientStatus,
     callStatus,
     error,
+
+    // Peers, including their streams
     peers,
-    user: trackedUser,
-    localAudio,
-    localVideo,
-    localScreenshare,
-    closeProducer,
-    toggleAudio,
-    toggleVideo,
-    produceTrack,
-    messages,
-    sendMessage,
-    disconnect,
     monitors,
 
-    // Operations
+    // Self
+    user: trackedUser,
+
+    // Produce local streams
+    produceTrack,
+
+    // Get local streams
+    localProducers,
+
+    // Manipulate local streams
+    closeProducer,
+    pauseProducer,
+    resumeProducer,
+
+    // Send and receive messages
+    messages,
+    sendMessage,
+
+    // Disconnect
+    disconnect,
+
+    // Server operations
     textMessage,
     terminate,
     remoteAudioMute,
