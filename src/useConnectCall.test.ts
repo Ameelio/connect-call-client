@@ -62,9 +62,9 @@ describe("useConnectCall", () => {
       })
     );
 
-    expect(result.current.status).toBe("initializing");
+    expect(result.current.clientStatus).toBe("initializing");
 
-    await waitFor(() => expect(result.current.status).toBe("connected"));
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
   });
 
   it("receives joined events", async () => {
@@ -186,7 +186,7 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    await waitFor(() => expect(result.current.status).toBe("connected"));
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
 
     // TODO
   });
@@ -201,7 +201,7 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    await waitFor(() => expect(result.current.status).toBe("connected"));
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
 
     act(() => {
       client.sendServerEvent("textMessage", {
@@ -235,7 +235,7 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    await waitFor(() => expect(result.current.status).toBe("connected"));
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
 
     await actHook(() => result.current.sendMessage("Hello"));
     expect(result.current.messages).toMatchInlineSnapshot(`
@@ -262,7 +262,7 @@ describe("useConnectCall", () => {
         onNewMessage,
       })
     );
-    await waitFor(() => expect(result.current.status).toBe("connected"));
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
 
     act(() => {
       client.sendServerEvent("textMessage", {
@@ -291,8 +291,8 @@ describe("useConnectCall", () => {
       })
     );
 
-    expect(result.current.status).toBe("initializing");
-    await waitFor(() => expect(result.current.status).toBe("connected"));
+    expect(result.current.clientStatus).toBe("initializing");
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
     const res = await actHook(() => result.current.terminateCall());
     expect(res).toBeUndefined();
   });
@@ -312,10 +312,10 @@ describe("useConnectCall", () => {
     const { result } = renderHook(() =>
       useConnectCall({ call, user, onTimer })
     );
-    await waitFor(() => expect(result.current.status).toBe("connected"));
+    await waitFor(() => expect(result.current.clientStatus).toBe("connected"));
 
     await result.current.disconnect();
-    expect(result.current.status).toBe("disconnected");
+    expect(result.current.clientStatus).toBe("disconnected");
   });
 
   it("broadcasts connection state of a participant to peers", async () => {

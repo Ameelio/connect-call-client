@@ -1,6 +1,13 @@
 import { MediaKind } from "mediasoup-client/lib/types";
 import { useCallback, useEffect, useState } from "react";
-import { CallStatus, ProducerLabel, Role, User, UserStatus } from "./API";
+import {
+  CallStatus,
+  ProducerLabel,
+  PublishedParticipant,
+  Role,
+  User,
+  UserStatus,
+} from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
 export type AudioTrack = {
@@ -14,11 +21,12 @@ export type VideoTrack = {
   aspectRatio?: number;
 };
 
-export type ClientStatus =
-  | "initializing"
-  | "errored"
-  | "connected"
-  | "disconnected";
+export enum ClientStatus {
+  initializing = "initializing",
+  errored = "errored",
+  connected = "connected",
+  disconnected = "disconnected",
+}
 
 type Props = {
   call?: {
@@ -45,13 +53,10 @@ export type Message = {
 };
 
 export type ConnectCall = {
-  status: ClientStatus | CallStatus;
+  clientStatus: ClientStatus;
+  callStatus?: CallStatus;
   error?: Error;
-  user?: {
-    id: string;
-    role: Role;
-    status: UserStatus[];
-  };
+  user?: PublishedParticipant;
   localAudio: AudioTrack | undefined;
   localVideo: VideoTrack | undefined;
   localScreenshare: VideoTrack | undefined;
@@ -63,7 +68,7 @@ export type ConnectCall = {
     label: ProducerLabel
   ) => Promise<void>;
   peers: Record<string, Peer>;
-  monitors: string[];
+  monitors: Record<string, Peer>;
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
   setPreferredSimulcastLayer: (x: {
@@ -104,25 +109,24 @@ const useConnectCall = ({
   const [localVideo, setLocalVideo] = useState<VideoTrack>();
   const [localScreenshare, setLocalScreenshare] = useState<VideoTrack>();
   const [peers, setPeers] = useState<Record<string, Peer>>({});
-  const [monitors, setMonitors] = useState<string[]>([]);
+  const [monitors, setMonitors] = useState<Record<string, Peer>>({});
 
   useEffect(() => {
     if (client) client.disableFrux = disableFrux;
   }, [disableFrux, client]);
 
-  const [trackedUser, setTrackedUser] = useState<{
-    id: string;
-    role: Role;
-    status: UserStatus[];
-  }>();
+  const [trackedUser, setTrackedUser] = useState<PublishedParticipant>();
 
   const [messages, setMessages] = useState<Message[]>([]);
 
   const [error, setError] = useState<Error>();
-  const [status, setStatus] = useState<ConnectCall["status"]>("initializing");
+  const [clientStatus, setClientStatus] = useState<ClientStatus>(
+    ClientStatus.initializing
+  );
+  const [callStatus, setCallStatus] = useState<CallStatus>();
 
   const handleError = (e: Error) => {
-    setStatus("errored");
+    setClientStatus(ClientStatus.errored);
     setError(e);
   };
 
@@ -148,8 +152,6 @@ const useConnectCall = ({
       );
     }
   };
-
-  const handleStatusChange = (status: CallStatus) => setStatus(status);
 
   const handleTextMessage = (message: { user: User; contents: string }) =>
     setMessages((existing) => [
@@ -195,14 +197,34 @@ const useConnectCall = ({
     })
       .then((client) => {
         setClient(client);
-        setTrackedUser(client.user);
+        client.on("peers", (p) => {
+          setPeers(
+            Object.fromEntries(
+              Object.entries(p).filter(
+                ([key, { user }]) => user.role !== Role.monitor
+              )
+            )
+          );
+          setMonitors(
+            Object.fromEntries(
+              Object.entries(p).filter(
+                ([key, { user }]) => user.role === Role.monitor
+              )
+            )
+          );
+        });
+        client.on("self", (u) => setTrackedUser(u));
+        client.on("status", (s) => setCallStatus(s));
+
+        // Request most recent state
+        client.emitState();
       })
       .catch(handleError);
   }, [call?.id, call?.url, call?.token, debounceReady]);
 
   const disconnect = useCallback(async () => {
     if (!client) return;
-    setStatus("disconnected");
+    setClientStatus(ClientStatus.disconnected);
     client.close();
   }, [client]);
 
@@ -229,7 +251,7 @@ const useConnectCall = ({
 
   useEffect(() => {
     if (!client) return;
-    setStatus("connected");
+    setClientStatus(ClientStatus.connected);
     return () => void disconnect();
   }, [client, disconnect]);
 
@@ -406,7 +428,8 @@ const useConnectCall = ({
   );
 
   return {
-    status,
+    clientStatus,
+    callStatus,
     error,
     peers,
     user: trackedUser,

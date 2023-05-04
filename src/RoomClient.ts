@@ -9,6 +9,7 @@ import {
 } from "mediasoup-client/lib/types";
 import mitt, { Emitter } from "mitt";
 import {
+  CallStatus,
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
   PublishedConsumerInfo,
@@ -66,6 +67,7 @@ type Events = {
   textMessage: { user: User; contents: string };
   timer: { name: string; msRemaining: number; msElapsed: number };
   peers: Peer[];
+  status: CallStatus;
   self: PublishedParticipant;
 };
 
@@ -103,6 +105,7 @@ class RoomClient {
     status: UserStatus[];
   };
   private client: Client;
+  private state?: PublishedRoomState;
 
   private producerTransport: Transport | null;
   private consumerTransport: Transport;
@@ -162,46 +165,9 @@ class RoomClient {
       this.emitter.emit("timer", { name, msRemaining, msElapsed });
     });
 
-    client.on("state", async (state: PublishedRoomState) => {
-      const presentIds = new Set<string>();
-
-      // Everyone but self
-      this.emitter.emit(
-        "peers",
-        await Promise.all(
-          Object.entries(state.participants)
-            .filter(([key, _]) => key !== client.socket.id)
-            .map(async ([_, val]) => ({
-              ...val,
-              consumers: Object.fromEntries(
-                await Promise.all(
-                  Object.entries(val.consumers).map(async ([label, data]) => {
-                    presentIds.add(data.id);
-                    return [label, await this.updateOrMakeConsumer(data)];
-                  })
-                )
-              ),
-            }))
-        )
-      );
-
-      // Self
-      const selfReport = state.participants[client.socket.id];
-
-      if (selfReport) {
-        this.emitter.emit("self", selfReport);
-      }
-
-      // ROom status
-      this.emitter.emit("status", state.status);
-
-      // Clean up missing peers
-      Array.from(this.consumers.entries()).forEach(([key, { consumer }]) => {
-        if (!presentIds.has(key)) {
-          consumer.close();
-          this.consumers.delete(key);
-        }
-      });
+    client.on("state", (state: PublishedRoomState) => {
+      this.state = state;
+      this.emitState();
     });
 
     // now that our handlers are prepared, we're reading to begin consuming
@@ -214,6 +180,59 @@ class RoomClient {
 
   off<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
     this.emitter.off(name, handler);
+  }
+
+  async emitState() {
+    // Always emit a coherent state; if state changes
+    // mid-emit, don't respond.
+    const state = this.state;
+
+    if (!state) return;
+
+    const presentIds = new Set<string>();
+
+    // Everyone but self
+    this.emitter.emit(
+      "peers",
+      Object.fromEntries(
+        await Promise.all(
+          Object.entries(state.participants)
+            .filter(([key, _]) => key !== this.client.socket.id)
+            .map(async ([key, val]) => [
+              key,
+              {
+                ...val,
+                consumers: Object.fromEntries(
+                  await Promise.all(
+                    Object.entries(val.consumers).map(async ([label, data]) => {
+                      presentIds.add(data.id);
+                      return [label, await this.updateOrMakeConsumer(data)];
+                    })
+                  )
+                ),
+              },
+            ])
+        )
+      )
+    );
+
+    // Self
+    const selfReport = state.participants[this.client.socket.id];
+
+    if (selfReport) {
+      this.emitter.emit("self", selfReport);
+    }
+
+    // Room status
+    this.emitter.emit("status", state.status);
+
+    // Clean up missing peers
+    Array.from(this.consumers.entries()).forEach(([key, { consumer }]) => {
+      if (!presentIds.has(key)) {
+        consumer.close();
+        this.consumers.delete(key);
+      }
+    });
   }
 
   // === Tracking server status ==
