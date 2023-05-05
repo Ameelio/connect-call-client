@@ -49,8 +49,7 @@ export type ConnectCall = {
   messages: Message[];
   sendMessage: (contents: string) => Promise<void>;
   setPreferredSimulcastLayer: (x: {
-    peerId: string;
-    label: ProducerLabel;
+    consumerId: string;
     spatialLayer: number;
     temporalLayer?: number;
   }) => Promise<void>;
@@ -239,6 +238,7 @@ const useConnectCall = ({
       spatialLayer: number;
       temporalLayer?: number;
     }) => {
+      if (!client) throw new Error("missing client");
       await client.setPreferredSimulcastLayer({
         consumerId,
         spatialLayer,
