@@ -155,6 +155,7 @@ class RoomClient {
 
     client.on("state", (state: PublishedRoomState) => {
       this.state = state;
+      await this.checkLocalMute();
       this.emitState();
     });
 
