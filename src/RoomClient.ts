@@ -254,7 +254,6 @@ class RoomClient {
       ) {
         await consumer.resume();
       }
-      console.log("Updated consumer to", consumer);
       return {
         stream,
         paused: consumer.paused,
@@ -273,8 +272,6 @@ class RoomClient {
       consumer,
       stream,
     });
-
-    console.log("Created consumer to", consumer);
 
     return {
       stream,
