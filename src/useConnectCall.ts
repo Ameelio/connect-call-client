@@ -231,21 +231,14 @@ const useConnectCall = ({
 
   const setPreferredSimulcastLayer = useCallback(
     async ({
-      peerId,
-      label,
+      consumerId,
       spatialLayer,
       temporalLayer,
     }: {
-      peerId: string;
-      label: ProducerLabel;
+      consumerId: string;
       spatialLayer: number;
       temporalLayer?: number;
     }) => {
-      if (!client) throw new Error("Not connected");
-      const peer = peers[peerId];
-      if (!peer) throw new Error("no such peer");
-      const consumerId = peer.consumers[label]?.id;
-      if (!consumerId) throw new Error("no such consumer");
       await client.setPreferredSimulcastLayer({
         consumerId,
         spatialLayer,
