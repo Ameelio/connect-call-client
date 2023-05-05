@@ -500,7 +500,7 @@ const useConnectCall = ({
           stream,
           paused:
             client.user.status.includes(UserStatus.AudioMutedByServer) ||
-            !track.enabled,
+            track.enabled === false, // Only consider explicit false
         });
       }
       if (label === ProducerLabel.video) {
@@ -513,7 +513,7 @@ const useConnectCall = ({
           stream,
           paused:
             client.user.status.includes(UserStatus.VideoMutedByServer) ||
-            !track.enabled,
+            track.enabled === false, // Only consider explicit false
           aspectRatio,
         });
       }
