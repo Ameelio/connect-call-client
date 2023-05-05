@@ -248,9 +248,10 @@ class RoomClient {
       } else if (!consumerData.paused && consumer.paused) {
         await consumer.resume();
       }
+      console.log("Updated consumer to", consumer);
       return {
         stream,
-        paused: consumer.paused,
+        paused: consumer.paused || consumer.producerPaused,
         id: consumer.id,
       };
     }
@@ -265,9 +266,11 @@ class RoomClient {
       stream,
     });
 
+    console.log("Created consumer to", consumer);
+
     return {
       stream,
-      paused: consumer.paused,
+      paused: consumer.paused || consumer.producerPaused,
       id: consumer.id,
     };
   }
