@@ -154,9 +154,9 @@ class RoomClient {
     });
 
     client.on("state", async (state: PublishedRoomState) => {
-      this.state = state;
-      this.emitState();
+      this.receiveState(state);
       await this.checkLocalMute();
+      this.emitState();
     });
 
     // now that our handlers are prepared, we're reading to begin consuming
@@ -169,6 +169,17 @@ class RoomClient {
 
   off<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
     this.emitter.off(name, handler);
+  }
+
+  async receiveState(state: PublishedRoomState) {
+    this.state = state;
+
+    const selfReport = state.participants[this.client.socket.id];
+
+    if (selfReport) {
+      // Update local latest status
+      this.user.status = selfReport.status;
+    }
   }
 
   async emitState() {
@@ -220,9 +231,6 @@ class RoomClient {
           )
         ),
       });
-
-      // Update local latest status
-      this.user.status = selfReport.status;
     }
 
     // Room status
