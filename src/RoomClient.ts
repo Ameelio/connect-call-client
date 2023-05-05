@@ -155,8 +155,8 @@ class RoomClient {
 
     client.on("state", async (state: PublishedRoomState) => {
       this.state = state;
-      await this.checkLocalMute();
       this.emitState();
+      await this.checkLocalMute();
     });
 
     // now that our handlers are prepared, we're reading to begin consuming
