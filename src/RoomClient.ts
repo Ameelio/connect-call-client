@@ -153,7 +153,7 @@ class RoomClient {
       this.emitter.emit("timer", { name, msRemaining, msElapsed });
     });
 
-    client.on("state", (state: PublishedRoomState) => {
+    client.on("state", async (state: PublishedRoomState) => {
       this.state = state;
       await this.checkLocalMute();
       this.emitState();
