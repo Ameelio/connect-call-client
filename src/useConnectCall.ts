@@ -498,7 +498,9 @@ const useConnectCall = ({
       if (label === ProducerLabel.audio) {
         setLocalAudio({
           stream,
-          paused: client.user.status.includes(UserStatus.AudioMutedByServer),
+          paused:
+            client.user.status.includes(UserStatus.AudioMutedByServer) ||
+            !track.enabled,
         });
       }
       if (label === ProducerLabel.video) {
@@ -509,7 +511,9 @@ const useConnectCall = ({
           videoWidth && videoHeight ? videoHeight / videoWidth : undefined;
         setLocalVideo({
           stream,
-          paused: client.user.status.includes(UserStatus.VideoMutedByServer),
+          paused:
+            client.user.status.includes(UserStatus.VideoMutedByServer) ||
+            !track.enabled,
           aspectRatio,
         });
       }
