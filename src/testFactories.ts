@@ -36,7 +36,7 @@ export function clientFactory() {
       .fn()
       .mockImplementation(
         (name: keyof ClientMessages) =>
-          new Promise((resolve, reject) =>
+          new Promise((resolve) =>
             setTimeout(() => resolve(emitResponses[name]), 50)
           )
       ),

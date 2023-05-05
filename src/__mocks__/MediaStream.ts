@@ -1,5 +1,6 @@
 type MediaStreamTrack = {
   kind: "audio" | "video";
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   addEventListener: (event: string, handler: any) => void;
 };
 

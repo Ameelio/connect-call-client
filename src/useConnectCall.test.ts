@@ -234,11 +234,12 @@ describe("useConnectCall", () => {
     await waitFor(() =>
       expect(Object.values(result.current.peers)).toHaveLength(1)
     );
-    await waitFor(() =>
-      expect(
-        Object.values(result.current.peers["socket-id"]!.consumers)
-      ).toHaveLength(0)
-    );
+    await waitFor(() => {
+      const peer = result.current.peers["socket-id"];
+      if (!peer) throw new Error("need peer");
+
+      expect(Object.values(peer.consumers)).toHaveLength(0);
+    });
 
     act(() => {
       client.sendServerEvent("state", {

@@ -195,7 +195,7 @@ class RoomClient {
       Object.fromEntries(
         await Promise.all(
           Object.entries(state.participants)
-            .filter(([key, _]) => key !== this.client.socket.id)
+            .filter(([key]) => key !== this.client.socket.id)
             .map(async ([key, val]) => [
               key,
               {

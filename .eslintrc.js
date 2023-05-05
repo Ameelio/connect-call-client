@@ -8,4 +8,13 @@ module.exports = {
     "plugin:react-hooks/recommended",
     "prettier",
   ],
+  rules: {
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        argsIgnorePattern: "^_",
+      },
+    ],
+  },
 };

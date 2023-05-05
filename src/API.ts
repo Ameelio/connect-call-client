@@ -118,7 +118,7 @@ export type ClientMessages = {
     },
     { success: true }
   ];
-  finishConnecting: [{}, { success: true }];
+  finishConnecting: [Record<string, never>, { success: true }];
   heartbeat: [Record<string, never>, Record<string, never>];
   produce: [
     {

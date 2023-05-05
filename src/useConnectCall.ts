@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CallStatus, ProducerLabel, Role, User } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
@@ -64,8 +64,29 @@ export type ConnectCall = {
   lowerHand: () => Promise<void>;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
-  setDisableFrux: (setting: boolean) => void;
 };
+
+function useChangeTracker<T>({
+  onAdd,
+  onRemove,
+  object,
+}: {
+  onAdd?: (t: T) => void;
+  onRemove?: (t: T) => void;
+  object: Record<string, T>;
+}) {
+  const last = useRef<Record<string, T>>(object);
+
+  useEffect(() => {
+    Object.entries(object).forEach(([key, val]) => {
+      if (!(key in last.current) && onAdd) onAdd(val);
+    });
+    Object.entries(last.current).forEach(([key, val]) => {
+      if (!(key in object) && onRemove) onRemove(val);
+    });
+    last.current = object;
+  }, [object, onAdd, onRemove]);
+}
 
 /**
  * useConnectCall integrates with RoomClient and provides observable values.
@@ -79,17 +100,24 @@ const useConnectCall = ({
   onTimer,
   onNewMessage,
 }: Props): ConnectCall => {
-  const [disableFrux, setDisableFrux] = useState<boolean>(false);
   const [client, setClient] = useState<RoomClient>();
   const [localProducers, setLocalProducers] = useState<
     Partial<Record<ProducerLabel, { stream: MediaStream; paused: boolean }>>
   >({});
+
   const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [monitors, setMonitors] = useState<Record<string, Peer>>({});
 
-  useEffect(() => {
-    if (client) client.disableFrux = disableFrux;
-  }, [disableFrux, client]);
+  useChangeTracker({
+    onAdd: (peer) => onPeerConnected?.(peer.user),
+    onRemove: (peer) => onPeerDisconnected?.(peer.user),
+    object: peers,
+  });
+
+  useChangeTracker({
+    onAdd: (peer) => onMonitorJoined?.(peer.user.id),
+    object: monitors,
+  });
 
   const [trackedUser, setTrackedUser] = useState<Peer>();
 
@@ -115,55 +143,66 @@ const useConnectCall = ({
     return () => clearTimeout(debounceTimeout);
   }, []);
 
-  function bindClient(client: RoomClient) {
+  const bindClient = useCallback((client: RoomClient) => {
     client.on("peers", (p) => {
       setPeers(
         Object.fromEntries(
           Object.entries(p).filter(
-            ([key, { user }]) => user.role !== Role.monitor
+            ([_, { user }]) => user.role !== Role.monitor
           )
         )
       );
       setMonitors(
         Object.fromEntries(
           Object.entries(p).filter(
-            ([key, { user }]) => user.role === Role.monitor
+            ([_, { user }]) => user.role === Role.monitor
           )
         )
       );
     });
     client.on("self", (u) => setTrackedUser(u));
     client.on("status", (s) => setCallStatus(s));
-    client.on("textMessage", (msg) => {
+    client.on("localProducers", (p) => {
+      setLocalProducers(p);
+    });
+
+    // Request most recent state
+    client.emitState();
+  }, []);
+
+  useEffect(() => {
+    if (!client) return;
+
+    const messageHandler = (msg: { user: User; contents: string }) => {
       const stamped = {
         ...msg,
         timestamp: new Date(),
       };
       setMessages((existing) => [...existing, stamped]);
       if (onNewMessage) onNewMessage(stamped);
-    });
-    client.on("localProducers", (p) => {
-      setLocalProducers(p);
-    });
+    };
 
-    client.on(
-      "timer",
-      ({
-        name,
-        msRemaining,
-        msElapsed,
-      }: {
-        name: string;
-        msRemaining: number;
-        msElapsed: number;
-      }) => {
-        onTimer && onTimer(name, msRemaining, msElapsed);
-      }
-    );
+    client.on("textMessage", messageHandler);
 
-    // Request most recent state
-    client.emitState();
-  }
+    const timerHandler = ({
+      name,
+      msRemaining,
+      msElapsed,
+    }: {
+      name: string;
+      msRemaining: number;
+      msElapsed: number;
+    }) => {
+      onTimer && onTimer(name, msRemaining, msElapsed);
+    };
+
+    client.on("timer", timerHandler);
+
+    return () => {
+      client.off("textMessage", messageHandler);
+      client.off("timer", timerHandler);
+    };
+  }, [client, onNewMessage, onTimer]);
 
   // create a client for the call
   useEffect(() => {
@@ -179,7 +218,7 @@ const useConnectCall = ({
         bindClient(client);
       })
       .catch(handleError);
-  }, [call?.id, call?.url, call?.token, debounceReady]);
+  }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
 
   const disconnect = useCallback(async () => {
     if (!client) return;
@@ -201,13 +240,6 @@ const useConnectCall = ({
     setClientStatus(ClientStatus.connected);
     return () => void disconnect();
   }, [client, disconnect]);
-
-  // announce text messages
-  useEffect(() => {
-    if (!client || !onNewMessage) return;
-    const handler = (msg: { user: User; contents: string }) => {};
-    return () => client.off("textMessage", handler);
-  });
 
   const sendMessage = useCallback(
     async (contents: string) => {
@@ -377,7 +409,6 @@ const useConnectCall = ({
     lowerHand,
     remoteLowerHand,
     setPreferredSimulcastLayer,
-    setDisableFrux: (setting: boolean) => setDisableFrux(setting),
 
     terminateCall,
   };

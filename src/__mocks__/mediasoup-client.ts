@@ -8,8 +8,12 @@ class Transport {
       paused: options.paused || false,
       kind: options.track.kind,
       appData: options.appData,
-      pause: () => {},
-      resume: () => {},
+      pause: () => {
+        return;
+      },
+      resume: () => {
+        return;
+      },
     };
     result.pause = () => {
       result.paused = true;
@@ -27,8 +31,12 @@ class Transport {
       close: jest.fn(),
       paused: options.paused || false,
       appData: options.appData,
-      pause: () => {},
-      resume: () => {},
+      pause: () => {
+        return;
+      },
+      resume: () => {
+        return;
+      },
     };
     result.pause = () => {
       result.paused = true;
