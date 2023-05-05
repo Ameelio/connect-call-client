@@ -281,6 +281,7 @@ class RoomClient {
   }
 
   async checkLocalMute() {
+    console.log("Checking local mute", this.user.status, this.localProducers);
     // If we are now remote muted but not locally muted,
     // locally mute.
     if (
