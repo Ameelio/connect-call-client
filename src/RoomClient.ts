@@ -220,6 +220,9 @@ class RoomClient {
           )
         ),
       });
+
+      // Update local latest status
+      this.user.status = selfReport.status;
     }
 
     // Room status
