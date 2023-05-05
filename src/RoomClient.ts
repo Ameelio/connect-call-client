@@ -262,10 +262,9 @@ class RoomClient {
       };
     }
 
-    const consumer = await this.consumerTransport.consume({
-      ...consumerData,
-      paused: consumerData.paused || consumerData.producerPaused,
-    });
+    const consumer = await this.consumerTransport.consume(consumerData);
+    if (consumerData.paused || consumerData.producerPaused) consumer.pause();
+
     const stream = new MediaStream();
 
     stream.addTrack(consumer.track);
@@ -279,7 +278,7 @@ class RoomClient {
 
     return {
       stream,
-      paused: consumer.paused || consumer.producerPaused,
+      paused: consumer.paused,
       id: consumer.id,
     };
   }
