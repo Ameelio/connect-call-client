@@ -243,20 +243,29 @@ class RoomClient {
     if (result) {
       const { consumer, stream } = result;
       // Track paused state
-      if (consumerData.paused && !consumer.paused) {
+      if (
+        (consumerData.paused || consumerData.producerPaused) &&
+        !consumer.paused
+      ) {
         await consumer.pause();
-      } else if (!consumerData.paused && consumer.paused) {
+      } else if (
+        !(consumerData.paused || consumerData.producerPaused) &&
+        consumer.paused
+      ) {
         await consumer.resume();
       }
       console.log("Updated consumer to", consumer);
       return {
         stream,
-        paused: consumer.paused || consumer.producerPaused,
+        paused: consumer.paused,
         id: consumer.id,
       };
     }
 
-    const consumer = await this.consumerTransport.consume(consumerData);
+    const consumer = await this.consumerTransport.consume({
+      ...consumerData,
+      paused: consumerData.paused || consumerData.producerPaused,
+    });
     const stream = new MediaStream();
 
     stream.addTrack(consumer.track);
