@@ -133,8 +133,6 @@ class RoomClient {
     producerTransport?.on(
       "produce",
       async ({ appData, kind, rtpParameters }, callback) => {
-        // TODO this event will need to inform the server
-        // about whether this is a screenshare stream
         const { producerId } = await client.emit("produce", {
           kind,
           rtpParameters,
@@ -338,6 +336,10 @@ class RoomClient {
       }
     });
 
+    this.emitProducers();
+  }
+
+  emitProducers(): void {
     this.emitter.emit(
       "localProducers",
       Object.fromEntries(
@@ -361,6 +363,8 @@ class RoomClient {
       producerId: localProducer.producer.id,
     });
     delete this.localProducers[label];
+
+    this.emitProducers();
   }
 
   async pauseProducer(label: ProducerLabel): Promise<void> {
