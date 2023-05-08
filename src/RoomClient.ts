@@ -286,8 +286,7 @@ class RoomClient {
     };
   }
 
-  async checkLocalMute() {
-    console.log("Checking local mute", this.user.status, this.localProducers);
+  private async checkLocalMute() {
     // If we are now remote muted but not locally muted,
     // locally mute.
     if (
@@ -489,17 +488,7 @@ class RoomClient {
       type: producer.kind as MediaKind,
       ...(reason ? { reason: reason } : {}),
     });
-    this.emitter.emit(
-      "localProducers",
-      Object.fromEntries(
-        Object.entries(this.localProducers).map(
-          ([label, { producer, stream }]) => [
-            label,
-            { paused: producer.paused, stream },
-          ]
-        )
-      )
-    );
+    this.emitProducers();
   }
 
   // === Initial handshake ===

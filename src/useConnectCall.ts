@@ -77,6 +77,14 @@ function useChangeTracker<T>({
 }) {
   const last = useRef<Record<string, T>>(object);
 
+  // useChangeTracker tracks changes in an object and emits
+  // onAdd and onRemove events on rerender whenever a key
+  // is added or removed.
+  // We do this by keeping a reference of the last copy of
+  // of the object and comparing.
+  // Note: we assume the object reference changes whenever
+  // the object changes, i.e. that the object is treated
+  // like an immutable type.
   useEffect(() => {
     Object.entries(object).forEach(([key, val]) => {
       if (!(key in last.current) && onAdd) onAdd(val);
@@ -134,14 +142,31 @@ const useConnectCall = ({
     setError(e);
   };
 
+  // To avoid problems with react strict mode,
+  // don't initialize until 10 ms have passed without unmounting.
   const [debounceReady, setDebounceReady] = useState(false);
-
   useEffect(() => {
     const debounceTimeout = setTimeout(() => {
       setDebounceReady(true);
     }, 10);
     return () => clearTimeout(debounceTimeout);
   }, []);
+
+  // create a client for the call, subject to debounce
+  useEffect(() => {
+    if (call?.id === undefined) return;
+    if (!debounceReady) return;
+    RoomClient.connect({
+      id: call.id,
+      url: call.url,
+      token: call.token,
+    })
+      .then((client) => {
+        setClient(client);
+        bindClient(client);
+      })
+      .catch(handleError);
+  }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
 
   const bindClient = useCallback((client: RoomClient) => {
     client.on("peers", (p) => {
@@ -170,6 +195,9 @@ const useConnectCall = ({
     client.emitState();
   }, []);
 
+  // "message" and "timer" handlers may change over time,
+  // and we can afford to miss quick ones at the very start.
+  // useEffect to bind/unbind these when they change.
   useEffect(() => {
     if (!client) return;
 
@@ -204,22 +232,6 @@ const useConnectCall = ({
     };
   }, [client, onNewMessage, onTimer]);
 
-  // create a client for the call
-  useEffect(() => {
-    if (call?.id === undefined) return;
-    if (!debounceReady) return;
-    RoomClient.connect({
-      id: call.id,
-      url: call.url,
-      token: call.token,
-    })
-      .then((client) => {
-        setClient(client);
-        bindClient(client);
-      })
-      .catch(handleError);
-  }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
-
   const disconnect = useCallback(async () => {
     if (!client) return;
     setClientStatus(ClientStatus.disconnected);
@@ -235,6 +247,7 @@ const useConnectCall = ({
     [client]
   );
 
+  // Report disconnection when disconnected
   useEffect(() => {
     if (!client) return;
     setClientStatus(ClientStatus.connected);
