@@ -24,7 +24,7 @@ type Props = {
 };
 
 export type Message = {
-  user: Omit<User, "type">;
+  user: User;
   contents: string;
   timestamp: Date;
 };

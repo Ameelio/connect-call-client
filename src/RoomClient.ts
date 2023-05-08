@@ -340,7 +340,7 @@ class RoomClient {
     this.emitProducers();
   }
 
-  emitProducers(): void {
+  private emitProducers(): void {
     this.emitter.emit(
       "localProducers",
       Object.fromEntries(
