@@ -152,22 +152,6 @@ const useConnectCall = ({
     return () => clearTimeout(debounceTimeout);
   }, []);
 
-  // create a client for the call, subject to debounce
-  useEffect(() => {
-    if (call?.id === undefined) return;
-    if (!debounceReady) return;
-    RoomClient.connect({
-      id: call.id,
-      url: call.url,
-      token: call.token,
-    })
-      .then((client) => {
-        setClient(client);
-        bindClient(client);
-      })
-      .catch(handleError);
-  }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
-
   const bindClient = useCallback((client: RoomClient) => {
     client.on("peers", (p) => {
       setPeers(
@@ -194,6 +178,22 @@ const useConnectCall = ({
     // Request most recent state
     client.emitState();
   }, []);
+
+  // create a client for the call, subject to debounce
+  useEffect(() => {
+    if (call?.id === undefined) return;
+    if (!debounceReady) return;
+    RoomClient.connect({
+      id: call.id,
+      url: call.url,
+      token: call.token,
+    })
+      .then((client) => {
+        setClient(client);
+        bindClient(client);
+      })
+      .catch(handleError);
+  }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
 
   // "message" and "timer" handlers may change over time,
   // and we can afford to miss quick ones at the very start.
