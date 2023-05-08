@@ -246,7 +246,7 @@ class RoomClient {
   }
 
   // === Tracking server status ==
-  async updateOrMakeConsumer(consumerData: PublishedConsumerInfo) {
+  private async updateOrMakeConsumer(consumerData: PublishedConsumerInfo) {
     const result = this.consumers.get(consumerData.id);
     if (result) {
       const { consumer, stream } = result;
