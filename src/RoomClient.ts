@@ -376,7 +376,7 @@ class RoomClient {
     const localProducer = this.localProducers[label];
     if (!localProducer) return;
 
-    // Do not allow resuming video when remote video muted
+    // Do not allow resuming labels paused by the server
     if (
       (label === ProducerLabel.video &&
         this.user.status.includes(UserStatus.VideoMutedByServer)) ||
