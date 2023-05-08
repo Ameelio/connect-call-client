@@ -83,9 +83,9 @@ class RoomClient {
       }
     >
   > = {};
-  consumers: Map<string, { consumer: Consumer; stream: MediaStream }> =
+  private consumers: Map<string, { consumer: Consumer; stream: MediaStream }> =
     new Map();
-  disableFrux: boolean;
+  private disableFrux: boolean;
   private peers: Record<string, Peer> = {};
   public user: {
     id: string;
