@@ -99,6 +99,7 @@ class RoomClient {
   private consumerTransport: Transport;
 
   private emitter: Emitter<Events>;
+  private waitForEmitState: () => Promise<void> = () => Promise.resolve();
 
   protected constructor({
     client,
@@ -187,6 +188,21 @@ class RoomClient {
 
     if (!state) return;
 
+    // "Locking" mechanism.
+    // "await waitForEmitState()" means "wait until all triggered emitStates so far are done."
+    // If this is already non-null, replace it with a handler that waits for _us_,
+    // and also wait until everyone before us done before continuing.
+    const finishHandlers: Array<() => void> = [];
+    let finished = false;
+
+    const prev = this.waitForEmitState;
+    this.waitForEmitState = () =>
+      new Promise<void>((resolve) => {
+        if (finished) resolve();
+        else finishHandlers.push(resolve);
+      });
+    await prev();
+
     // Keep track of which consumers are still active,
     // so as to remove the ones that are gone.
     const presentIds = new Set<string>();
@@ -243,6 +259,9 @@ class RoomClient {
         this.consumers.delete(key);
       }
     });
+
+    finishHandlers.forEach((fn) => fn());
+    finished = true;
   }
 
   // === Tracking server status ==
