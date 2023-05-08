@@ -187,6 +187,8 @@ class RoomClient {
 
     if (!state) return;
 
+    // Keep track of which consumers are still active,
+    // so as to remove the ones that are gone.
     const presentIds = new Set<string>();
 
     // Everyone but self
