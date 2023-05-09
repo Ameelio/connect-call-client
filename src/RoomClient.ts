@@ -19,6 +19,25 @@ import {
   UserStatus,
 } from "./API";
 import Client from "./Client";
+import { Quality } from "./ConnectionMonitor";
+
+export interface ConnectionStateEvent {
+  code: PRODUCER_UPDATE_REASONS;
+  timestamp: string; // new Date().toJSON()
+}
+
+export interface ConnectionState {
+  quality: Quality;
+  ping: number;
+  videoDisabled?: boolean;
+}
+
+// TODO replace with real frux behavior
+const dummyConnectionState = {
+  quality: "excellent",
+  ping: 0,
+  videoDisabled: false,
+} as ConnectionState;
 
 const config: Record<MediaKind, ProducerOptions> = {
   video: {
@@ -60,6 +79,7 @@ export type Peer = {
     >
   >;
   status: UserStatus[];
+  connectionState: ConnectionState;
 };
 
 type Events = {
@@ -214,6 +234,7 @@ class RoomClient {
                 key,
                 {
                   ...val,
+                  connectionState: dummyConnectionState, // TODO
                   consumers: Object.fromEntries(
                     await Promise.all(
                       Object.entries(val.consumers).map(
@@ -236,6 +257,7 @@ class RoomClient {
       if (selfReport) {
         this.emitter.emit("self", {
           ...selfReport,
+          connectionState: dummyConnectionState, // TODO
           consumers: Object.fromEntries(
             await Promise.all(
               Object.entries(selfReport.consumers).map(
