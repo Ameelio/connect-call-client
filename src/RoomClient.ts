@@ -73,6 +73,14 @@ type Events = {
   self: Peer;
 };
 
+class PromiseQueue {
+  queue: Promise<void> = Promise.resolve();
+
+  add(op: () => Promise<void>) {
+    this.queue = this.queue.then(op).catch(() => {});
+  }
+}
+
 class RoomClient {
   localProducers: Partial<
     Record<
@@ -99,7 +107,7 @@ class RoomClient {
   private consumerTransport: Transport;
 
   private emitter: Emitter<Events>;
-  private waitForEmitState: () => Promise<void> = () => Promise.resolve();
+  private emitQueue: PromiseQueue = new PromiseQueue();
 
   protected constructor({
     client,
@@ -188,80 +196,68 @@ class RoomClient {
 
     if (!state) return;
 
-    // "Locking" mechanism.
-    // "await waitForEmitState()" means "wait until all triggered emitStates so far are done."
-    // If this is already non-null, replace it with a handler that waits for _us_,
-    // and also wait until everyone before us done before continuing.
-    const finishHandlers: Array<() => void> = [];
-    let finished = false;
+    this.emitQueue.add(async () => {
+      // Keep track of which consumers are still active,
+      // so as to remove the ones that are gone.
+      const presentIds = new Set<string>();
 
-    const prev = this.waitForEmitState;
-    this.waitForEmitState = () =>
-      new Promise<void>((resolve) => {
-        if (finished) resolve();
-        else finishHandlers.push(resolve);
-      });
-    await prev();
-
-    // Keep track of which consumers are still active,
-    // so as to remove the ones that are gone.
-    const presentIds = new Set<string>();
-
-    // Everyone but self
-    this.emitter.emit(
-      "peers",
-      Object.fromEntries(
-        await Promise.all(
-          Object.entries(state.participants)
-            .filter(([key]) => key !== this.client.socket.id)
-            .map(async ([key, val]) => [
-              key,
-              {
-                ...val,
-                consumers: Object.fromEntries(
-                  await Promise.all(
-                    Object.entries(val.consumers).map(async ([label, data]) => {
-                      presentIds.add(data.id);
-                      return [label, await this.updateOrMakeConsumer(data)];
-                    })
-                  )
-                ),
-              },
-            ])
-        )
-      )
-    );
-
-    // Self
-    const selfReport = state.participants[this.client.socket.id];
-
-    if (selfReport) {
-      this.emitter.emit("self", {
-        ...selfReport,
-        consumers: Object.fromEntries(
+      // Everyone but self
+      this.emitter.emit(
+        "peers",
+        Object.fromEntries(
           await Promise.all(
-            Object.entries(selfReport.consumers).map(async ([label, data]) => {
-              presentIds.add(data.id);
-              return [label, await this.updateOrMakeConsumer(data)];
-            })
+            Object.entries(state.participants)
+              .filter(([key]) => key !== this.client.socket.id)
+              .map(async ([key, val]) => [
+                key,
+                {
+                  ...val,
+                  consumers: Object.fromEntries(
+                    await Promise.all(
+                      Object.entries(val.consumers).map(
+                        async ([label, data]) => {
+                          presentIds.add(data.id);
+                          return [label, await this.updateOrMakeConsumer(data)];
+                        }
+                      )
+                    )
+                  ),
+                },
+              ])
           )
-        ),
-      });
-    }
+        )
+      );
 
-    // Room status
-    this.emitter.emit("status", state.status);
+      // Self
+      const selfReport = state.participants[this.client.socket.id];
 
-    // Clean up missing peers
-    Array.from(this.consumers.entries()).forEach(([key, { consumer }]) => {
-      if (!presentIds.has(key)) {
-        consumer.close();
-        this.consumers.delete(key);
+      if (selfReport) {
+        this.emitter.emit("self", {
+          ...selfReport,
+          consumers: Object.fromEntries(
+            await Promise.all(
+              Object.entries(selfReport.consumers).map(
+                async ([label, data]) => {
+                  presentIds.add(data.id);
+                  return [label, await this.updateOrMakeConsumer(data)];
+                }
+              )
+            )
+          ),
+        });
       }
-    });
 
-    finishHandlers.forEach((fn) => fn());
-    finished = true;
+      // Room status
+      this.emitter.emit("status", state.status);
+
+      // Clean up missing peers
+      Array.from(this.consumers.entries()).forEach(([key, { consumer }]) => {
+        if (!presentIds.has(key)) {
+          consumer.close();
+          this.consumers.delete(key);
+        }
+      });
+    });
   }
 
   // === Tracking server status ==
