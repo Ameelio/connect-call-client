@@ -281,6 +281,11 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`
       Object {
         "socket-id": Object {
+          "connectionState": Object {
+            "ping": 0,
+            "quality": "excellent",
+            "videoDisabled": false,
+          },
           "consumers": Object {
             "audio": Object {
               "id": "consumer-audio-id",
@@ -357,6 +362,11 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`
       Object {
         "socket-id": Object {
+          "connectionState": Object {
+            "ping": 0,
+            "quality": "excellent",
+            "videoDisabled": false,
+          },
           "consumers": Object {
             "audio": Object {
               "id": "consumer-audio-id",
@@ -456,6 +466,11 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`
       Object {
         "socket-id": Object {
+          "connectionState": Object {
+            "ping": 0,
+            "quality": "excellent",
+            "videoDisabled": false,
+          },
           "consumers": Object {
             "audio": Object {
               "id": "consumer-audio-id",
@@ -556,6 +571,11 @@ describe("useConnectCall", () => {
     expect(result.current.peers).toMatchInlineSnapshot(`
       Object {
         "socket-id": Object {
+          "connectionState": Object {
+            "ping": 0,
+            "quality": "excellent",
+            "videoDisabled": false,
+          },
           "consumers": Object {
             "audio": Object {
               "id": "consumer-audio-id",
