@@ -83,6 +83,7 @@ export type ServerMessages = {
 };
 
 export type ClientMessages = {
+  connectionState: [ConnectionState, { success: true }];
   join: [
     { token: string },
     {

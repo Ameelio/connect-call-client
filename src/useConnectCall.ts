@@ -137,11 +137,6 @@ const useConnectCall = ({
   );
   const [callStatus, setCallStatus] = useState<CallStatus>();
 
-  const handleError = (e: Error) => {
-    setClientStatus(ClientStatus.errored);
-    setError(e);
-  };
-
   // To avoid problems with react strict mode,
   // don't initialize until 10 ms have passed without unmounting.
   const [debounceReady, setDebounceReady] = useState(false);
@@ -192,7 +187,10 @@ const useConnectCall = ({
         setClient(client);
         bindClient(client);
       })
-      .catch(handleError);
+      .catch((error) => {
+        setClientStatus(ClientStatus.errored);
+        setError(error);
+      });
   }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
 
   // "message" and "timer" handlers may change over time,
