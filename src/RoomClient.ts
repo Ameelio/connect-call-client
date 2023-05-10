@@ -97,7 +97,8 @@ class PromiseQueue {
   queue: Promise<void> = Promise.resolve();
 
   add(op: () => Promise<void>) {
-    this.queue = this.queue.then(op).catch(() => {
+    this.queue = this.queue.then(op).catch((e) => {
+      console.error("Promise queue errored", e);
       return;
     });
   }
