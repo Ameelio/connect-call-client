@@ -62,6 +62,7 @@ export type ConnectCall = {
   remoteVideoUnmute: (targetUserId: string) => Promise<void>;
   raiseHand: () => Promise<void>;
   lowerHand: () => Promise<void>;
+  enableFrux: () => void;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
 };
@@ -173,6 +174,19 @@ const useConnectCall = ({
     // Request most recent state
     client.emitState();
   }, []);
+
+  const [fruxEnabled, setFruxEnabled] = useState(false);
+
+  const enableFrux = useCallback(() => {
+    setFruxEnabled(true);
+  }, []);
+
+  // Respond to fruxEnabled.
+  // This way, if fruxEnabled is set before the client is initialized,
+  // we will still respond.
+  useEffect(() => {
+    if (fruxEnabled && client) client.enableFrux();
+  }, [fruxEnabled, client]);
 
   // create a client for the call, subject to debounce
   useEffect(() => {
@@ -383,6 +397,9 @@ const useConnectCall = ({
     clientStatus,
     callStatus,
     error,
+
+    // Frux
+    enableFrux,
 
     // Peers, including their streams
     peers,

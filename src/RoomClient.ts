@@ -193,6 +193,16 @@ class RoomClient {
     void client.emit("finishConnecting", {});
   }
 
+  enableFrux() {
+    this.client.connectionMonitor.start();
+    this.client.connectionMonitor.emitter.on(
+      "quality",
+      async (currentQuality) => {
+        client.emit("connectionState", currentQuality);
+      }
+    );
+  }
+
   on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
     this.emitter.on(name, handler);
   }
