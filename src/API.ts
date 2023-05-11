@@ -125,6 +125,7 @@ export type ClientMessages = {
       kind: MediaKind;
       rtpParameters: RtpParameters;
       label: ProducerLabel;
+      paused?: boolean;
     },
     { producerId: string }
   ];

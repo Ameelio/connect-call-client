@@ -169,6 +169,7 @@ class RoomClient {
           kind,
           rtpParameters,
           label: appData.label,
+          paused: appData.startPaused,
         });
 
         callback({ id: producerId });
@@ -360,7 +361,7 @@ class RoomClient {
     const producer = await this.producerTransport.produce({
       ...config[track.kind as MediaKind],
       track,
-      appData: { label },
+      appData: { label, startPaused: !track.enabled },
     });
     const stream = new MediaStream();
     stream.addTrack(track);
