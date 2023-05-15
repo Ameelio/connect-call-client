@@ -121,7 +121,7 @@ class RoomClient {
   private emitter: Emitter<Events>;
   private emitQueue: PromiseQueue = new PromiseQueue();
 
-  private fruxEnabled: boolean = false;
+  private fruxEnabled = false;
 
   protected constructor({
     client,

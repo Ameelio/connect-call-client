@@ -188,7 +188,6 @@ const useConnectCall = ({
     if (fruxEnabled && client) {
       client.enableFrux();
     }
-    return () => {};
   }, [fruxEnabled, client]);
 
   // create a client for the call, subject to debounce
