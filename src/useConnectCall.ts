@@ -185,7 +185,10 @@ const useConnectCall = ({
   // This way, if fruxEnabled is set before the client is initialized,
   // we will still respond.
   useEffect(() => {
-    if (fruxEnabled && client) client.enableFrux();
+    if (fruxEnabled && client) {
+      client.enableFrux();
+    }
+    return () => {};
   }, [fruxEnabled, client]);
 
   // create a client for the call, subject to debounce

@@ -29,7 +29,7 @@ export interface ConnectionStateEvent {
 export interface ConnectionState {
   quality: Quality;
   ping: number;
-  videoDisabled?: boolean;
+  videoDisabled: boolean;
 }
 
 // TODO replace with real frux behavior
@@ -116,7 +116,6 @@ class RoomClient {
   > = {};
   private consumers: Map<string, { consumer: Consumer; stream: MediaStream }> =
     new Map();
-  private disableFrux: boolean;
   private peers: Record<string, Peer> = {};
   public user: {
     id: string;
@@ -131,6 +130,8 @@ class RoomClient {
 
   private emitter: Emitter<Events>;
   private emitQueue: PromiseQueue = new PromiseQueue();
+
+  private fruxEnabled: boolean;
 
   protected constructor({
     client,
@@ -201,6 +202,7 @@ class RoomClient {
         client.emit("connectionState", currentQuality);
       }
     );
+    this.fruxEnabled = true;
   }
 
   on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
@@ -219,6 +221,18 @@ class RoomClient {
     if (selfReport) {
       // Update local latest status
       this.user.status = selfReport.status;
+
+      // Respond to frux
+      if (this.fruxEnabled) {
+        this.user.connectionState = selfReport.connectionState;
+
+        if (
+          this.user.connectionState.quality === ConnectionStateQuality.bad &&
+          !this.localProducers[ProducerLabel.video]?.paused
+        ) {
+          this.pauseProducer(ProducerLabel.video);
+        }
+      }
     }
   }
 
@@ -245,7 +259,12 @@ class RoomClient {
                 key,
                 {
                   ...val,
-                  connectionState: dummyConnectionState, // TODO
+                  connectionState: {
+                    ...val.connectionState,
+                    videoDisabled:
+                      val.connectionState.quality ===
+                      ConnectionStateQuality.bad,
+                  },
                   consumers: Object.fromEntries(
                     await Promise.all(
                       Object.entries(val.consumers).map(
@@ -268,7 +287,11 @@ class RoomClient {
       if (selfReport) {
         this.emitter.emit("self", {
           ...selfReport,
-          connectionState: dummyConnectionState, // TODO
+          connectionState: {
+            ...val.connectionState,
+            videoDisabled:
+              val.connectionState.quality === ConnectionStateQuality.bad,
+          },
           consumers: Object.fromEntries(
             await Promise.all(
               Object.entries(selfReport.consumers).map(
@@ -421,6 +444,7 @@ class RoomClient {
   async pauseProducer(label: ProducerLabel): Promise<void> {
     const localProducer = this.localProducers[label];
     if (!localProducer) return;
+
     await this.updateProducer(localProducer.producer, true);
   }
 
@@ -434,6 +458,14 @@ class RoomClient {
         this.user.status.includes(UserStatus.VideoMutedByServer)) ||
       (label === ProducerLabel.audio &&
         this.user.status.includes(UserStatus.AudioMutedByServer))
+    )
+      return;
+
+    // Do not allow resuming video when connection is bad
+    if (
+      label === ProducerLabel.video &&
+      this.fruxEnabled &&
+      this.user.connectionState.quality === ConnectionStateQuality.bad
     )
       return;
 

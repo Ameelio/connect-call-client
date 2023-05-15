@@ -57,6 +57,7 @@ export type PublishedParticipant = {
   user: User;
   consumers: Partial<Record<ProducerLabel, PublishedConsumerInfo>>;
   status: UserStatus[];
+  connectionState: ConnectionState;
 };
 
 export type PublishedRoomState = {
