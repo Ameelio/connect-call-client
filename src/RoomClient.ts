@@ -10,6 +10,7 @@ import {
 import mitt, { Emitter } from "mitt";
 import {
   CallStatus,
+  ConnectionState,
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
   PublishedConsumerInfo,
@@ -19,18 +20,6 @@ import {
   UserStatus,
 } from "./API";
 import Client from "./Client";
-import { Quality } from "./ConnectionMonitor";
-
-export interface ConnectionStateEvent {
-  code: PRODUCER_UPDATE_REASONS;
-  timestamp: string; // new Date().toJSON()
-}
-
-export interface ConnectionState {
-  quality: Quality;
-  ping: number;
-  videoDisabled?: boolean;
-}
 
 // TODO replace with real frux behavior
 const dummyConnectionState = {

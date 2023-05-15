@@ -1,18 +1,9 @@
 import mitt, { Emitter } from "mitt";
 import { Socket } from "socket.io-client";
-
-const Qualities = [
-  "excellent",
-  "good",
-  "average",
-  "poor",
-  "bad",
-  "unknown",
-] as const;
-export type Quality = typeof Qualities[number];
+import { ConnectionStateQuality } from "./API";
 
 export type QualityEvents = {
-  quality: { quality: Quality; ping: number };
+  quality: { quality: ConnectionStateQuality; ping: number };
 };
 
 interface Result {
@@ -24,14 +15,23 @@ const RESULTS_TTL_MS = 5000;
 const PING_EVENT = "ccc-ping";
 const PONG_EVENT = "ccc-pong";
 
+const qualities = [
+  ConnectionStateQuality.bad,
+  ConnectionStateQuality.poor,
+  ConnectionStateQuality.average,
+  ConnectionStateQuality.good,
+  ConnectionStateQuality.excellent,
+  ConnectionStateQuality.unknown,
+];
+
 // QualityRange defines the ranges by which we establish the Quality in milliseconds
-const QualityRange: Record<Quality, number> = {
-  [Qualities[0]]: 50,
-  [Qualities[1]]: 150,
-  [Qualities[2]]: 500,
-  [Qualities[3]]: 1000,
-  [Qualities[4]]: Infinity,
-  [Qualities[5]]: NaN,
+const QualityRange: Record<ConnectionStateQuality, number> = {
+  [ConnectionStateQuality.bad]: 50,
+  [ConnectionStateQuality.poor]: 150,
+  [ConnectionStateQuality.average]: 500,
+  [ConnectionStateQuality.good]: 1000,
+  [ConnectionStateQuality.excellent]: Infinity,
+  [ConnectionStateQuality.unknown]: NaN,
 };
 
 /**
@@ -43,8 +43,8 @@ export default class ConnectionMonitor {
   private interval: number;
   private results: Result[] = [];
   private _currentQuality: QualityEvents["quality"] = {
-    quality: "unknown",
-    ping: NaN,
+    quality: ConnectionStateQuality.unknown,
+    ping: Number.NaN,
   };
   public emitter: Emitter<QualityEvents>;
 
@@ -99,8 +99,8 @@ export default class ConnectionMonitor {
       this.results.map((r) => r.ms).reduce((a, b) => a + b) /
       this.results.length;
     // get the quality value
-    let newQuality: Quality = "unknown";
-    for (const quality of Qualities) {
+    let newQuality: ConnectionStateQuality = ConnectionStateQuality.unknown;
+    for (const quality of qualities) {
       if (average <= QualityRange[quality]) {
         newQuality = quality;
         break;

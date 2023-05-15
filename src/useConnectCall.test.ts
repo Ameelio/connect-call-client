@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
 import { act as actHook, renderHook } from "@testing-library/react-hooks/pure";
 import { advanceTo } from "jest-date-mock";
-import { ProducerLabel, Role, UserStatus } from "./API";
+import { CallStatus, ProducerLabel, Role, UserStatus } from "./API";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
 import useConnectCall from "./useConnectCall";
@@ -102,11 +102,13 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
-    await waitFor(() => expect(result.current.callStatus).toBe("live"));
+    await waitFor(() =>
+      expect(result.current.callStatus).toBe(CallStatus.live)
+    );
     await waitFor(() =>
       expect(Object.values(result.current.peers)).toHaveLength(1)
     );
@@ -226,11 +228,13 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
-    await waitFor(() => expect(result.current.callStatus).toBe("live"));
+    await waitFor(() =>
+      expect(result.current.callStatus).toBe(CallStatus.live)
+    );
     await waitFor(() =>
       expect(Object.values(result.current.peers)).toHaveLength(1)
     );
@@ -270,7 +274,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -352,7 +356,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -451,7 +455,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -555,7 +559,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -657,7 +661,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -677,7 +681,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
