@@ -6,12 +6,31 @@ import {
   TransportOptions,
 } from "mediasoup-client/lib/types";
 
-export type CallStatus =
-  | "live"
-  | "missing_monitor"
-  | "ended"
-  | "terminated"
-  | "no_show";
+export enum ConnectionStateQuality {
+  excellent = "excellent",
+  good = "good",
+  average = "average",
+  poor = "poor",
+  bad = "bad",
+  unknown = "unknown",
+}
+
+export type InputConnectionState = {
+  quality: ConnectionStateQuality;
+  ping: number;
+};
+
+export type OutputConnectionState = InputConnectionState & {
+  videoDisabled: boolean;
+};
+
+export enum CallStatus {
+  live = "live",
+  missing_monitor = "missing_monitor",
+  ended = "ended",
+  terminated = "terminated",
+  no_show = "no_show",
+}
 
 export enum ProducerLabel {
   video = "video",
@@ -57,7 +76,7 @@ export type PublishedParticipant = {
   user: User;
   consumers: Partial<Record<ProducerLabel, PublishedConsumerInfo>>;
   status: UserStatus[];
-  connectionState: ConnectionState;
+  connectionState: OutputConnectionState;
 };
 
 export type PublishedRoomState = {
@@ -84,7 +103,7 @@ export type ServerMessages = {
 };
 
 export type ClientMessages = {
-  connectionState: [ConnectionState, { success: true }];
+  connectionState: [InputConnectionState, { success: true }];
   join: [
     { token: string },
     {
@@ -127,6 +146,7 @@ export type ClientMessages = {
       kind: MediaKind;
       rtpParameters: RtpParameters;
       label: ProducerLabel;
+      paused?: boolean;
     },
     { producerId: string }
   ];

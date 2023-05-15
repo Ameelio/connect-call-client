@@ -2,7 +2,13 @@ import "@testing-library/jest-dom";
 import { act, waitFor } from "@testing-library/react";
 import { act as actHook, renderHook } from "@testing-library/react-hooks/pure";
 import { advanceTo } from "jest-date-mock";
-import { ProducerLabel, Role, UserStatus } from "./API";
+import {
+  CallStatus,
+  ConnectionStateQuality,
+  ProducerLabel,
+  Role,
+  UserStatus,
+} from "./API";
 import Client from "./Client";
 import { clientFactory } from "./testFactories";
 import useConnectCall from "./useConnectCall";
@@ -20,6 +26,13 @@ Object.defineProperty(window, "MediaStream", {
   writable: true,
   value: MediaStream,
 });
+
+// Dummy connection state
+const connectionState = {
+  quality: ConnectionStateQuality.excellent,
+  ping: 0,
+  videoDisabled: false,
+};
 
 const onPeerConnected = jest.fn();
 const onPeerDisconnected = jest.fn();
@@ -90,6 +103,7 @@ describe("useConnectCall", () => {
               id: "test-id",
               role: Role.webinarAttendee,
             },
+            connectionState,
             status: [UserStatus.AudioMutedByServer],
             consumers: {},
           },
@@ -98,15 +112,18 @@ describe("useConnectCall", () => {
               id: "self-test-id",
               role: Role.webinarAttendee,
             },
+            connectionState,
             status: [UserStatus.AudioMutedByServer],
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
-    await waitFor(() => expect(result.current.callStatus).toBe("live"));
+    await waitFor(() =>
+      expect(result.current.callStatus).toBe(CallStatus.live)
+    );
     await waitFor(() =>
       expect(Object.values(result.current.peers)).toHaveLength(1)
     );
@@ -214,6 +231,7 @@ describe("useConnectCall", () => {
               id: "test-id",
               role: Role.visitParticipant,
             },
+            connectionState,
             status: [],
             consumers: {},
           },
@@ -222,15 +240,18 @@ describe("useConnectCall", () => {
               id: "self-test-id",
               role: Role.visitParticipant,
             },
+            connectionState,
             status: [],
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
-    await waitFor(() => expect(result.current.callStatus).toBe("live"));
+    await waitFor(() =>
+      expect(result.current.callStatus).toBe(CallStatus.live)
+    );
     await waitFor(() =>
       expect(Object.values(result.current.peers)).toHaveLength(1)
     );
@@ -250,6 +271,7 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {
               [ProducerLabel.audio]: {
                 id: "consumer-audio-id",
@@ -267,10 +289,11 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -324,6 +347,7 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {
               [ProducerLabel.audio]: {
                 id: "consumer-audio-id",
@@ -349,10 +373,11 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -423,6 +448,7 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {
               [ProducerLabel.audio]: {
                 id: "consumer-audio-id",
@@ -448,10 +474,11 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -527,6 +554,7 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {
               [ProducerLabel.audio]: {
                 id: "consumer-audio-id",
@@ -552,10 +580,11 @@ describe("useConnectCall", () => {
               role: Role.visitParticipant,
             },
             status: [],
+            connectionState,
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -646,6 +675,7 @@ describe("useConnectCall", () => {
               role: Role.webinarAttendee,
             },
             status: [UserStatus.AudioMutedByServer],
+            connectionState,
             consumers: {},
           },
           "self-socket-id": {
@@ -654,10 +684,11 @@ describe("useConnectCall", () => {
               role: Role.webinarAttendee,
             },
             status: [UserStatus.AudioMutedByServer],
+            connectionState,
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 
@@ -674,10 +705,11 @@ describe("useConnectCall", () => {
               role: Role.webinarAttendee,
             },
             status: [UserStatus.AudioMutedByServer],
+            connectionState,
             consumers: {},
           },
         },
-        status: "live",
+        status: CallStatus.live,
       });
     });
 

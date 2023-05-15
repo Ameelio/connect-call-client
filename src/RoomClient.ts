@@ -10,6 +10,8 @@ import {
 import mitt, { Emitter } from "mitt";
 import {
   CallStatus,
+  ConnectionStateQuality,
+  OutputConnectionState,
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
   PublishedConsumerInfo,
@@ -19,25 +21,12 @@ import {
   UserStatus,
 } from "./API";
 import Client from "./Client";
-import { Quality } from "./ConnectionMonitor";
 
-export interface ConnectionStateEvent {
-  code: PRODUCER_UPDATE_REASONS;
-  timestamp: string; // new Date().toJSON()
-}
-
-export interface ConnectionState {
-  quality: Quality;
-  ping: number;
-  videoDisabled: boolean;
-}
-
-// TODO replace with real frux behavior
-const dummyConnectionState = {
-  quality: "excellent",
-  ping: 0,
+const unknownConnectionState = {
+  quality: ConnectionStateQuality.unknown,
+  ping: NaN,
   videoDisabled: false,
-} as ConnectionState;
+};
 
 const config: Record<MediaKind, ProducerOptions> = {
   video: {
@@ -79,7 +68,7 @@ export type Peer = {
     >
   >;
   status: UserStatus[];
-  connectionState: ConnectionState;
+  connectionState: OutputConnectionState;
 };
 
 type Events = {
@@ -121,6 +110,7 @@ class RoomClient {
     id: string;
     role: Role;
     status: UserStatus[];
+    connectionState: OutputConnectionState;
   };
   private client: Client;
   private state?: PublishedRoomState;
@@ -131,7 +121,7 @@ class RoomClient {
   private emitter: Emitter<Events>;
   private emitQueue: PromiseQueue = new PromiseQueue();
 
-  private fruxEnabled: boolean;
+  private fruxEnabled: boolean = false;
 
   protected constructor({
     client,
@@ -148,7 +138,6 @@ class RoomClient {
     userId: string;
     status: UserStatus[];
   }) {
-    this.disableFrux = false;
     this.client = client;
     this.producerTransport = producerTransport;
     this.consumerTransport = consumerTransport;
@@ -157,6 +146,7 @@ class RoomClient {
       id: userId,
       status,
       role,
+      connectionState: unknownConnectionState,
     };
 
     this.emitter = mitt();
@@ -170,6 +160,7 @@ class RoomClient {
           kind,
           rtpParameters,
           label: appData.label,
+          paused: appData.startPaused,
         });
 
         callback({ id: producerId });
@@ -199,7 +190,7 @@ class RoomClient {
     this.client.connectionMonitor.emitter.on(
       "quality",
       async (currentQuality) => {
-        client.emit("connectionState", currentQuality);
+        this.client.emit("connectionState", currentQuality);
       }
     );
     this.fruxEnabled = true;
@@ -227,8 +218,8 @@ class RoomClient {
         this.user.connectionState = selfReport.connectionState;
 
         if (
-          this.user.connectionState.quality === ConnectionStateQuality.bad &&
-          !this.localProducers[ProducerLabel.video]?.paused
+          this.user.connectionState.videoDisabled &&
+          this.localProducers[ProducerLabel.video]?.producer.paused === false
         ) {
           this.pauseProducer(ProducerLabel.video);
         }
@@ -259,12 +250,6 @@ class RoomClient {
                 key,
                 {
                   ...val,
-                  connectionState: {
-                    ...val.connectionState,
-                    videoDisabled:
-                      val.connectionState.quality ===
-                      ConnectionStateQuality.bad,
-                  },
                   consumers: Object.fromEntries(
                     await Promise.all(
                       Object.entries(val.consumers).map(
@@ -287,11 +272,6 @@ class RoomClient {
       if (selfReport) {
         this.emitter.emit("self", {
           ...selfReport,
-          connectionState: {
-            ...val.connectionState,
-            videoDisabled:
-              val.connectionState.quality === ConnectionStateQuality.bad,
-          },
           consumers: Object.fromEntries(
             await Promise.all(
               Object.entries(selfReport.consumers).map(
@@ -393,7 +373,7 @@ class RoomClient {
     const producer = await this.producerTransport.produce({
       ...config[track.kind as MediaKind],
       track,
-      appData: { label },
+      appData: { label, startPaused: !track.enabled },
     });
     const stream = new MediaStream();
     stream.addTrack(track);
@@ -465,7 +445,7 @@ class RoomClient {
     if (
       label === ProducerLabel.video &&
       this.fruxEnabled &&
-      this.user.connectionState.quality === ConnectionStateQuality.bad
+      this.user.connectionState.videoDisabled
     )
       return;
 
