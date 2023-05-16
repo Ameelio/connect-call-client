@@ -65,6 +65,10 @@ export type ConnectCall = {
   enableFrux: () => void;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
+
+  // Debugging only
+  simulatePingLatency: (ping: number) => void;
+  stopSimulatingPingLatency: () => void;
 };
 
 function useChangeTracker<T>({
@@ -180,6 +184,17 @@ const useConnectCall = ({
   const enableFrux = useCallback(() => {
     setFruxEnabled(true);
   }, []);
+
+  const simulatePingLatency = useCallback(
+    (ping: number) => {
+      if (client) client.simulatePingLatency(ping);
+    },
+    [client]
+  );
+
+  const stopSimulatingPingLatency = useCallback(() => {
+    if (client) client.stopSimulatingPingLatency();
+  }, [client]);
 
   // Respond to fruxEnabled.
   // This way, if fruxEnabled is set before the client is initialized,
@@ -439,6 +454,10 @@ const useConnectCall = ({
     lowerHand,
     remoteLowerHand,
     setPreferredSimulcastLayer,
+
+    // Debugging
+    simulatePingLatency,
+    stopSimulatingPingLatency,
 
     terminateCall,
   };

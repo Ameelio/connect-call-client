@@ -203,6 +203,14 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
+  // Useful functions for debugging purposes only
+  simulatePingLatency(ping: number) {
+    this.client.connectionMonitor.simulatePingLatency(ping);
+  }
+  stopSimulatingPingLatency() {
+    this.client.connectionMonitor.stopSimulatingPingLatency();
+  }
+
   async receiveState(state: PublishedRoomState) {
     this.state = state;
 

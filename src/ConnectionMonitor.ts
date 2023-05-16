@@ -47,6 +47,7 @@ export default class ConnectionMonitor {
     ping: Number.NaN,
   };
   public emitter: Emitter<QualityEvents>;
+  private simulatedPingLatency: number | null = null;
 
   /**
    *
@@ -79,12 +80,27 @@ export default class ConnectionMonitor {
       // TODO: log a warning?
       return;
     }
-    this.results.push({
-      checkTime: startTime,
-      ms: new Date().getTime() - startTime,
-    });
+    if (this.simulatedPingLatency !== null) {
+      this.results.push({
+        checkTime: startTime,
+        ms: this.simulatedPingLatency,
+      });
+    } else {
+      this.results.push({
+        checkTime: startTime,
+        ms: new Date().getTime() - startTime,
+      });
+    }
     this.analyze();
   };
+
+  public simulatePingLatency(ping: number) {
+    this.simulatedPingLatency = ping;
+  }
+
+  public stopSimulatingPingLatency() {
+    this.simulatedPingLatency = null;
+  }
 
   private analyze() {
     // remove results that have expired
