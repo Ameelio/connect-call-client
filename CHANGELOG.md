@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Consolidates producers and consumers into streams indexed by `ProducerLabels`.
   - `localVideo` and `localAudio` replaced with `localProducers[label]`
+  - `toggleVideo` and `toggleAudio` replaced with `pauseProducer(label)` and `resumeProducer(label)`
   - `peer.stream`, `peer.audioStream`, and `peer.screenshareStream` replaced by `peer.consumers[label].stream`
   - `peer.pausedStates[label]` replaced by `peer.consumers[label].paused`
 - Uses the new `state` event from CVH. Related API updates:
