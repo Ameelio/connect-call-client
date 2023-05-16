@@ -1,18 +1,9 @@
 import mitt, { Emitter } from "mitt";
 import { Socket } from "socket.io-client";
-
-const Qualities = [
-  "excellent",
-  "good",
-  "average",
-  "poor",
-  "bad",
-  "unknown",
-] as const;
-export type Quality = typeof Qualities[number];
+import { ConnectionStateQuality } from "./API";
 
 export type QualityEvents = {
-  quality: { quality: Quality; ping: number };
+  quality: { quality: ConnectionStateQuality; ping: number };
 };
 
 interface Result {
@@ -24,14 +15,23 @@ const RESULTS_TTL_MS = 5000;
 const PING_EVENT = "ccc-ping";
 const PONG_EVENT = "ccc-pong";
 
+const qualities = [
+  ConnectionStateQuality.excellent,
+  ConnectionStateQuality.good,
+  ConnectionStateQuality.average,
+  ConnectionStateQuality.poor,
+  ConnectionStateQuality.bad,
+  ConnectionStateQuality.unknown,
+];
+
 // QualityRange defines the ranges by which we establish the Quality in milliseconds
-const QualityRange: Record<Quality, number> = {
-  [Qualities[0]]: 50,
-  [Qualities[1]]: 150,
-  [Qualities[2]]: 500,
-  [Qualities[3]]: 1000,
-  [Qualities[4]]: Infinity,
-  [Qualities[5]]: NaN,
+const QualityRange: Record<ConnectionStateQuality, number> = {
+  [ConnectionStateQuality.excellent]: 50,
+  [ConnectionStateQuality.good]: 150,
+  [ConnectionStateQuality.average]: 500,
+  [ConnectionStateQuality.poor]: 1000,
+  [ConnectionStateQuality.bad]: Infinity,
+  [ConnectionStateQuality.unknown]: NaN,
 };
 
 /**
@@ -43,10 +43,11 @@ export default class ConnectionMonitor {
   private interval: number;
   private results: Result[] = [];
   private _currentQuality: QualityEvents["quality"] = {
-    quality: "unknown",
-    ping: NaN,
+    quality: ConnectionStateQuality.unknown,
+    ping: Number.NaN,
   };
   public emitter: Emitter<QualityEvents>;
+  private simulatedPingLatency: number | null = null;
 
   /**
    *
@@ -79,12 +80,27 @@ export default class ConnectionMonitor {
       // TODO: log a warning?
       return;
     }
-    this.results.push({
-      checkTime: startTime,
-      ms: new Date().getTime() - startTime,
-    });
+    if (this.simulatedPingLatency !== null) {
+      this.results.push({
+        checkTime: startTime,
+        ms: this.simulatedPingLatency,
+      });
+    } else {
+      this.results.push({
+        checkTime: startTime,
+        ms: new Date().getTime() - startTime,
+      });
+    }
     this.analyze();
   };
+
+  public simulatePingLatency(ping: number) {
+    this.simulatedPingLatency = ping;
+  }
+
+  public stopSimulatingPingLatency() {
+    this.simulatedPingLatency = null;
+  }
 
   private analyze() {
     // remove results that have expired
@@ -99,8 +115,8 @@ export default class ConnectionMonitor {
       this.results.map((r) => r.ms).reduce((a, b) => a + b) /
       this.results.length;
     // get the quality value
-    let newQuality: Quality = "unknown";
-    for (const quality of Qualities) {
+    let newQuality: ConnectionStateQuality = ConnectionStateQuality.unknown;
+    for (const quality of qualities) {
       if (average <= QualityRange[quality]) {
         newQuality = quality;
         break;

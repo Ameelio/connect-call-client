@@ -62,8 +62,13 @@ export type ConnectCall = {
   remoteVideoUnmute: (targetUserId: string) => Promise<void>;
   raiseHand: () => Promise<void>;
   lowerHand: () => Promise<void>;
+  enableFrux: () => void;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
+
+  // Debugging only
+  simulatePingLatency: (ping: number) => void;
+  stopSimulatingPingLatency: () => void;
 };
 
 function useChangeTracker<T>({
@@ -137,11 +142,6 @@ const useConnectCall = ({
   );
   const [callStatus, setCallStatus] = useState<CallStatus>();
 
-  const handleError = (e: Error) => {
-    setClientStatus(ClientStatus.errored);
-    setError(e);
-  };
-
   // To avoid problems with react strict mode,
   // don't initialize until 10 ms have passed without unmounting.
   const [debounceReady, setDebounceReady] = useState(false);
@@ -179,6 +179,32 @@ const useConnectCall = ({
     client.emitState();
   }, []);
 
+  const [fruxEnabled, setFruxEnabled] = useState(false);
+
+  const enableFrux = useCallback(() => {
+    setFruxEnabled(true);
+  }, []);
+
+  const simulatePingLatency = useCallback(
+    (ping: number) => {
+      if (client) client.simulatePingLatency(ping);
+    },
+    [client]
+  );
+
+  const stopSimulatingPingLatency = useCallback(() => {
+    if (client) client.stopSimulatingPingLatency();
+  }, [client]);
+
+  // Respond to fruxEnabled.
+  // This way, if fruxEnabled is set before the client is initialized,
+  // we will still respond.
+  useEffect(() => {
+    if (fruxEnabled && client) {
+      client.enableFrux();
+    }
+  }, [fruxEnabled, client]);
+
   // create a client for the call, subject to debounce
   useEffect(() => {
     if (call?.id === undefined) return;
@@ -192,7 +218,10 @@ const useConnectCall = ({
         setClient(client);
         bindClient(client);
       })
-      .catch(handleError);
+      .catch((error) => {
+        setClientStatus(ClientStatus.errored);
+        setError(error);
+      });
   }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
 
   // "message" and "timer" handlers may change over time,
@@ -386,6 +415,9 @@ const useConnectCall = ({
     callStatus,
     error,
 
+    // Frux
+    enableFrux,
+
     // Peers, including their streams
     peers,
     monitors,
@@ -422,6 +454,10 @@ const useConnectCall = ({
     lowerHand,
     remoteLowerHand,
     setPreferredSimulcastLayer,
+
+    // Debugging
+    simulatePingLatency,
+    stopSimulatingPingLatency,
 
     terminateCall,
   };
