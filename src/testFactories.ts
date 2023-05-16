@@ -16,6 +16,7 @@ export function clientFactory() {
     },
   };
   return {
+    socket: { id: "self-socket-id" },
     sendServerEvent: <E extends keyof ServerMessages>(
       name: E,
       data: ServerMessages[E]
@@ -35,7 +36,7 @@ export function clientFactory() {
       .fn()
       .mockImplementation(
         (name: keyof ClientMessages) =>
-          new Promise((resolve, reject) =>
+          new Promise((resolve) =>
             setTimeout(() => resolve(emitResponses[name]), 50)
           )
       ),

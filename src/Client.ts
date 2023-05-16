@@ -6,7 +6,7 @@ import ConnectionMonitor from "./ConnectionMonitor";
  * Client is a typed wrapper for raw socket events sent to and from the server.
  */
 export default class Client {
-  private socket: Socket;
+  public socket: Socket;
   public connectionMonitor: ConnectionMonitor;
 
   /**

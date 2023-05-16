@@ -10,14 +10,34 @@ import {
 import mitt, { Emitter } from "mitt";
 import {
   CallStatus,
-  Participant,
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
+  PublishedConsumerInfo,
+  PublishedRoomState,
   Role,
+  User,
   UserStatus,
 } from "./API";
 import Client from "./Client";
 import { Quality } from "./ConnectionMonitor";
+
+export interface ConnectionStateEvent {
+  code: PRODUCER_UPDATE_REASONS;
+  timestamp: string; // new Date().toJSON()
+}
+
+export interface ConnectionState {
+  quality: Quality;
+  ping: number;
+  videoDisabled?: boolean;
+}
+
+// TODO replace with real frux behavior
+const dummyConnectionState = {
+  quality: "excellent",
+  ping: 0,
+  videoDisabled: false,
+} as ConnectionState;
 
 const config: Record<MediaKind, ProducerOptions> = {
   video: {
@@ -47,203 +67,87 @@ const config: Record<MediaKind, ProducerOptions> = {
 };
 
 export type Peer = {
-  user: Participant;
-  stream: MediaStream;
-  screenshareStream: MediaStream;
-  pausedStates: Partial<Record<ProducerLabel, boolean>>;
-  connectionState: ConnectionState;
+  user: User;
+  consumers: Partial<
+    Record<
+      ProducerLabel,
+      {
+        stream: MediaStream;
+        paused: boolean;
+        id: string;
+      }
+    >
+  >;
   status: UserStatus[];
+  connectionState: ConnectionState;
 };
-
-export interface VideoState {
-  enabled: boolean;
-}
-
-export interface ConnectionStateEvent {
-  code: PRODUCER_UPDATE_REASONS;
-  timestamp: string; // new Date().toJSON()
-}
-
-export interface ConnectionState {
-  quality: Quality;
-  ping: number;
-  videoDisabled?: boolean;
-  // TODO: possibly expand this to include more details like bandwidth, overall health, reconnect history
-}
 
 type Events = {
-  onStatusChange: CallStatus;
-  onUserUpdate: {
-    id: string;
-    role: Role;
-    status: UserStatus[];
-  };
-  onPeerConnect: Participant;
-  onPeerDisconnect: Participant;
-  onPeerUpdate: Peer;
-  onMonitorJoin: string;
-  onMonitorDisconnect: string;
-  onProducerUpdate: {
-    producerId: string;
-    paused: boolean;
-    type: MediaKind;
-    label: ProducerLabel;
-  };
-  onTextMessage: { user: Participant; contents: string };
-  onTimer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
-  onConnectionState: ConnectionState;
-  onPeerConnectionState: ConnectionState & { user: Participant };
+  textMessage: { user: User; contents: string };
+  timer: { name: string; msRemaining: number; msElapsed: number };
+  peers: Peer[];
+  localProducers: Partial<
+    Record<ProducerLabel, { stream: MediaStream; paused: boolean }>
+  >;
+  status: CallStatus;
+  self: Peer;
 };
 
+class PromiseQueue {
+  queue: Promise<void> = Promise.resolve();
+
+  add(op: () => Promise<void>) {
+    this.queue = this.queue.then(op).catch((e) => {
+      console.error("Promise queue errored", e);
+      return;
+    });
+  }
+}
+
 class RoomClient {
-  producers: Partial<Record<ProducerLabel, Producer>> = {};
-  disableFrux: boolean;
-  private peers: Record<
-    string,
-    Peer & {
-      consumers: Partial<Record<ProducerLabel, Consumer>>;
-    }
+  localProducers: Partial<
+    Record<
+      ProducerLabel,
+      {
+        stream: MediaStream;
+        producer: Producer;
+      }
+    >
   > = {};
-  // We don't actually know anything about a monitor except their id.
-  private monitors: Set<string> = new Set();
+  private consumers: Map<string, { consumer: Consumer; stream: MediaStream }> =
+    new Map();
+  private disableFrux: boolean;
+  private peers: Record<string, Peer> = {};
   public user: {
     id: string;
     role: Role;
     status: UserStatus[];
   };
-  private callId: string;
   private client: Client;
+  private state?: PublishedRoomState;
+
   private producerTransport: Transport | null;
   private consumerTransport: Transport;
+
   private emitter: Emitter<Events>;
-  private connectionState: ConnectionState = {
-    quality: "unknown",
-    ping: NaN,
-    videoDisabled: false,
-  };
-  private heartbeat?: NodeJS.Timer;
-
-  static async connect(call: {
-    id: string;
-    url: string;
-    token: string;
-  }): Promise<RoomClient> {
-    const client = await Client.connect(call.url);
-
-    // The server sends the other members of the room
-    // very quickly, sometimes before we even receive the response
-    // to our own join request. Keep track of other peers
-    // if this happens.
-    const stagedJoinedEvents: {
-      id: string;
-      role: Role;
-      status: UserStatus[];
-    }[] = [];
-
-    const stagedJoinedHandler = ({
-      id,
-      role,
-      status,
-    }: {
-      id: string;
-      role: Role;
-      status: UserStatus[];
-    }) => {
-      stagedJoinedEvents.push({ id, role, status });
-    };
-
-    client.on("joined", stagedJoinedHandler);
-
-    // Request to join the room.
-    const {
-      role,
-      userId,
-      status,
-      producerTransportInfo,
-      consumerTransportInfo,
-      routerRtpCapabilities,
-    } = await client.emit("join", {
-      callId: call.id,
-      token: call.token,
-    });
-
-    // Load up a local media device consistent with server
-    const device = new mediasoupClient.Device();
-    await device.load({ routerRtpCapabilities });
-
-    // this handler is necessary to finish connecting a transport
-    // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-connect
-    const finishTransportConnection =
-      (transportId: string) =>
-      (
-        { dtlsParameters }: { dtlsParameters: DtlsParameters },
-        onSuccess: () => void,
-        onFailure: (e: unknown) => void
-      ) => {
-        client
-          .emit("establishDtls", {
-            dtlsParameters,
-            callId: call.id,
-            transportId: transportId,
-          })
-          .then(onSuccess, onFailure);
-      };
-
-    let producerTransport: Transport | null = null;
-    if (producerTransportInfo) {
-      producerTransport = device.createSendTransport(producerTransportInfo);
-
-      producerTransport.on(
-        "connect",
-        finishTransportConnection(producerTransport.id)
-      );
-    }
-
-    const consumerTransport = device.createRecvTransport(consumerTransportInfo);
-    consumerTransport.on(
-      "connect",
-      finishTransportConnection(consumerTransport.id)
-    );
-
-    await client.emit("declareRtpCapabilities", {
-      rtpCapabilities: device.rtpCapabilities,
-    });
-
-    client.off("joined", stagedJoinedHandler);
-
-    return new RoomClient({
-      callId: call.id,
-      client,
-      producerTransport,
-      consumerTransport,
-      role,
-      userId,
-      status,
-      stagedJoinedEvents,
-    });
-  }
+  private emitQueue: PromiseQueue = new PromiseQueue();
 
   protected constructor({
-    callId,
     client,
     producerTransport,
     consumerTransport,
     role,
     userId,
     status,
-    stagedJoinedEvents,
   }: {
-    callId: string;
     client: Client;
     producerTransport: Transport | null;
     consumerTransport: Transport;
-    role: Participant["role"];
+    role: Role;
     userId: string;
     status: UserStatus[];
-    stagedJoinedEvents: { id: string; role: Role; status: UserStatus[] }[];
   }) {
     this.disableFrux = false;
-    this.callId = callId;
     this.client = client;
     this.producerTransport = producerTransport;
     this.consumerTransport = consumerTransport;
@@ -255,260 +159,39 @@ class RoomClient {
     };
 
     this.emitter = mitt();
-    client.connectionMonitor.start();
-    client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
-      if (this.disableFrux) return;
-
-      let videoDisabled = !!this.connectionState.videoDisabled;
-      if (
-        currentQuality.quality === "bad" &&
-        this.connectionState.quality !== "bad"
-      ) {
-        // TODO: pauseVideo should return some indication of success
-        const reason: PRODUCER_UPDATE_REASONS = "paused_video_bad_connection";
-        await this.pauseVideo(reason);
-        videoDisabled = true;
-      } else if (
-        (["excellent", "good", "average"] as Quality[]).includes(
-          currentQuality.quality
-        )
-      ) {
-        videoDisabled = false;
-      }
-      this.connectionState = {
-        ...currentQuality,
-        videoDisabled,
-      };
-      this.emitter.emit("onConnectionState", this.connectionState);
-      if (this.user.role !== "monitor")
-        // we don't emit videoDisabled, but let producerUpdate pass the reason,
-        // and allow peers' CCC to set videoDisabled
-        client.emit("connectionState", {
-          quality: this.connectionState.quality,
-          ping: this.connectionState.ping,
-        });
-    });
 
     // integrate produce event with the server
     // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-produce
     producerTransport?.on(
       "produce",
       async ({ appData, kind, rtpParameters }, callback) => {
-        // TODO this event will need to inform the server
-        // about whether this is a screenshare stream
         const { producerId } = await client.emit("produce", {
-          callId: this.callId,
           kind,
           rtpParameters,
           label: appData.label,
+          paused: appData.startPaused,
         });
 
         callback({ id: producerId });
       }
     );
 
-    // Listen for new joiners
-    const joinedHandler = async ({
-      id,
-      role,
-      status,
-    }: {
-      id: string;
-      role: Role;
-      status: UserStatus[];
-    }) => {
-      if (role === Role.monitor) {
-        this.monitors.add(id);
-        this.emitter.emit("onMonitorJoin", id);
-      } else {
-        if (!this.peers[id]) {
-          this.peers[id] = {
-            user: { id, role },
-            consumers: {},
-            stream: new MediaStream(),
-            screenshareStream: new MediaStream(),
-            status,
-            pausedStates: {},
-            connectionState: { quality: "unknown", ping: NaN },
-          };
-          this.emitter.emit("onPeerConnect", { id, role });
-        }
-
-        this.peers[id].status = status;
-        this.emitter.emit("onPeerUpdate", this.peers[id]);
-      }
-    };
-
-    // Respond to staged joined events
-    stagedJoinedEvents.forEach((event) => joinedHandler(event));
-
-    client.on("joined", joinedHandler);
-
-    // listen for new peer tracks from the server
-    // TODO this event will need to distinguish between types of video stream
-    // (screenshare vs camera)
-    client.on("consume", async ({ user, paused, label, ...options }) => {
-      const consumer = await consumerTransport.consume(options);
-
-      if (!this.peers[user.id]) {
-        this.peers[user.id] = {
-          user,
-          consumers: {},
-          stream: new MediaStream(),
-          screenshareStream: new MediaStream(),
-          pausedStates: {},
-          status: [],
-          connectionState: { quality: "unknown", ping: NaN },
-        };
-        this.emitter.emit("onPeerConnect", user);
-      }
-
-      const existingConsumer = this.peers[user.id].consumers[label];
-      if (existingConsumer) {
-        if (label === ProducerLabel.screenshare) {
-          this.peers[user.id].screenshareStream.removeTrack(
-            existingConsumer.track
-          );
-        } else {
-          this.peers[user.id].stream.removeTrack(existingConsumer.track);
-        }
-      }
-
-      this.peers[user.id].consumers[label] = consumer;
-      this.peers[user.id].pausedStates[label] = paused;
-      if (!paused) {
-        // Screenshare goes in a different stream
-        if (label === ProducerLabel.screenshare) {
-          this.peers[user.id].screenshareStream.addTrack(consumer.track);
-        } else {
-          this.peers[user.id].stream.addTrack(consumer.track);
-        }
-      }
-      this.emitter.emit("onPeerUpdate", this.peers[user.id]);
-    });
-
-    // listen for tracks pausing and resuming
-    client.on("producerUpdate", async ({ from, paused, label, reason }) => {
-      const peer = this.peers[from.id];
-      if (!peer) throw new Error(`Unknown peer update ${from.id}`);
-      const track = peer.consumers[label]?.track;
-      peer.pausedStates[label] = paused;
-      if (track) {
-        if (label === ProducerLabel.screenshare) {
-          if (paused) {
-            peer.screenshareStream.removeTrack(track);
-          } else {
-            peer.screenshareStream.addTrack(track);
-          }
-        } else {
-          if (paused) {
-            peer.stream.removeTrack(track);
-          } else {
-            peer.stream.addTrack(track);
-          }
-        }
-      }
-      if (!paused) {
-        peer.connectionState.videoDisabled = false;
-      } else if (reason === "paused_video_bad_connection") {
-        peer.connectionState.videoDisabled = true;
-      }
-      this.emitter.emit("onPeerUpdate", peer);
-    });
-
-    // listen for tracks going away
-    client.on("producerClose", async ({ from, label }) => {
-      const peer = this.peers[from.id];
-      if (!peer) throw new Error(`Unknown peer update ${from.id}`);
-      const consumer = peer.consumers[label];
-      if (!consumer) return;
-
-      consumer.close();
-
-      const track = consumer.track;
-      if (track) {
-        if (label === ProducerLabel.screenshare) {
-          peer.screenshareStream.removeTrack(track);
-        } else {
-          peer.stream.removeTrack(track);
-        }
-      }
-      delete peer.consumers[label];
-      delete peer.pausedStates[label];
-      this.emitter.emit("onPeerUpdate", peer);
-    });
-
-    // listen for peers disconnecting
-    client.on("participantDisconnect", async (user) => {
-      const peer = this.peers[user.id];
-      if (peer) {
-        peer.consumers.audio?.close();
-        peer.consumers.video?.close();
-        delete this.peers[user.id];
-        this.emitter.emit("onPeerDisconnect", user);
-      } else if (this.monitors.has(user.id)) {
-        this.monitors.delete(user.id);
-        this.emitter.emit("onMonitorDisconnect", user.id);
-      }
-    });
-
-    // listen for call status changes
-    client.on("callStatus", (status) => {
-      this.emitter.emit("onStatusChange", status);
-    });
-
     client.on("textMessage", ({ from, contents }) => {
-      this.emitter.emit("onTextMessage", { user: from, contents });
-    });
-
-    client.on("userStatus", (statusUpdate) => {
-      const user = statusUpdate.user;
-      const status = statusUpdate.status.filter((x) =>
-        (Object.values(UserStatus) as string[]).includes(x)
-      ) as UserStatus[];
-      if (user.id === this.user.id) {
-        this.user.status = status;
-        this.emitter.emit("onUserUpdate", this.user);
-        this.checkLocalMute();
-      } else {
-        if (user.id in this.peers) {
-          this.peers[user.id].status = status;
-        } else {
-          this.peers[user.id] = {
-            user,
-            consumers: {},
-            stream: new MediaStream(),
-            screenshareStream: new MediaStream(),
-            status: status,
-            pausedStates: {},
-            connectionState: { quality: "unknown", ping: NaN },
-          };
-        }
-        this.emitter.emit("onPeerUpdate", this.peers[user.id]);
-      }
+      this.emitter.emit("textMessage", { user: from, contents });
     });
 
     client.on("timer", ({ name, msRemaining, msElapsed }) => {
-      this.emitter.emit("onTimer", { name, msRemaining, msElapsed });
+      this.emitter.emit("timer", { name, msRemaining, msElapsed });
     });
 
-    client.on("peerConnectionState", ({ from, quality, ping }) => {
-      const peer = this.peers[from.id];
-      if (peer) {
-        peer.connectionState.quality = quality;
-        peer.connectionState.ping = ping;
-        this.emitter.emit("onPeerUpdate", peer);
-      }
+    client.on("state", async (state: PublishedRoomState) => {
+      this.receiveState(state);
+      await this.checkLocalMute();
+      this.emitState();
     });
-
-    if (this.user.role === "monitor") {
-      this.heartbeat = setInterval(() => {
-        client.emit("heartbeat", {});
-      }, 1000);
-    }
 
     // now that our handlers are prepared, we're reading to begin consuming
-    void client.emit("finishConnecting", { callId });
+    void client.emit("finishConnecting", {});
   }
 
   on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
@@ -519,87 +202,236 @@ class RoomClient {
     this.emitter.off(name, handler);
   }
 
-  async produce(track: MediaStreamTrack, label: ProducerLabel): Promise<void> {
-    if (!this.producerTransport)
-      throw new Error(`RoomClient is not able to produce media`);
-    if (this.producers[label])
-      throw new Error(`RoomClient is already producing ${label}`);
+  async receiveState(state: PublishedRoomState) {
+    this.state = state;
 
-    const producer = await this.producerTransport.produce({
-      ...config[track.kind as MediaKind],
-      track,
-      appData: { label },
-    });
-    this.producers[label] = producer;
+    const selfReport = state.participants[this.client.socket.id];
 
-    track.addEventListener("ended", () => {
-      const producer = this.producers[label];
-      if (producer && producer.track === track) {
-        this.closeProducer(label);
+    if (selfReport) {
+      // Update local latest status
+      this.user.status = selfReport.status;
+    }
+  }
+
+  async emitState() {
+    // Always emit a coherent state; if state changes
+    // mid-emit, don't respond.
+    const state = this.state;
+
+    if (!state) return;
+
+    this.emitQueue.add(async () => {
+      // Keep track of which consumers are still active,
+      // so as to remove the ones that are gone.
+      const presentIds = new Set<string>();
+
+      // Everyone but self
+      this.emitter.emit(
+        "peers",
+        Object.fromEntries(
+          await Promise.all(
+            Object.entries(state.participants)
+              .filter(([key]) => key !== this.client.socket.id)
+              .map(async ([key, val]) => [
+                key,
+                {
+                  ...val,
+                  connectionState: dummyConnectionState, // TODO
+                  consumers: Object.fromEntries(
+                    await Promise.all(
+                      Object.entries(val.consumers).map(
+                        async ([label, data]) => {
+                          presentIds.add(data.id);
+                          return [label, await this.updateOrMakeConsumer(data)];
+                        }
+                      )
+                    )
+                  ),
+                },
+              ])
+          )
+        )
+      );
+
+      // Self
+      const selfReport = state.participants[this.client.socket.id];
+
+      if (selfReport) {
+        this.emitter.emit("self", {
+          ...selfReport,
+          connectionState: dummyConnectionState, // TODO
+          consumers: Object.fromEntries(
+            await Promise.all(
+              Object.entries(selfReport.consumers).map(
+                async ([label, data]) => {
+                  presentIds.add(data.id);
+                  return [label, await this.updateOrMakeConsumer(data)];
+                }
+              )
+            )
+          ),
+        });
       }
+
+      // Room status
+      this.emitter.emit("status", state.status);
+
+      // Clean up missing peers
+      Array.from(this.consumers.entries()).forEach(([key, { consumer }]) => {
+        if (!presentIds.has(key)) {
+          consumer.close();
+          this.consumers.delete(key);
+        }
+      });
     });
   }
 
-  async closeProducer(label: ProducerLabel): Promise<void> {
-    const producer = this.producers[label];
+  // === Tracking server status ==
+  private async updateOrMakeConsumer(consumerData: PublishedConsumerInfo) {
+    const result = this.consumers.get(consumerData.id);
+    if (result) {
+      const { consumer, stream } = result;
+      // Track paused state
+      if (
+        (consumerData.paused || consumerData.producerPaused) &&
+        !consumer.paused
+      ) {
+        await consumer.pause();
+      } else if (
+        !(consumerData.paused || consumerData.producerPaused) &&
+        consumer.paused
+      ) {
+        await consumer.resume();
+      }
+      return {
+        stream,
+        paused: consumer.paused,
+        id: consumer.id,
+      };
+    }
 
-    if (!producer) return;
+    const consumer = await this.consumerTransport.consume(consumerData);
+    if (consumerData.paused || consumerData.producerPaused) consumer.pause();
 
-    await producer.close();
-    await this.client.emit("producerClose", {
-      callId: this.callId,
-      producerId: producer.id,
+    const stream = new MediaStream();
+
+    stream.addTrack(consumer.track);
+
+    this.consumers.set(consumerData.id, {
+      consumer,
+      stream,
     });
-    delete this.producers[label];
+
+    return {
+      stream,
+      paused: consumer.paused,
+      id: consumer.id,
+    };
   }
 
-  async checkLocalMute() {
+  private async checkLocalMute() {
     // If we are now remote muted but not locally muted,
     // locally mute.
     if (
       this.user.status.includes(UserStatus.AudioMutedByServer) &&
-      this.producers.audio &&
-      !this.producers.audio.paused
+      this.localProducers.audio &&
+      !this.localProducers.audio.producer.paused
     ) {
-      this.pauseAudio();
+      await this.pauseProducer(ProducerLabel.audio);
     }
 
     // Same with video mute
     if (
       this.user.status.includes(UserStatus.VideoMutedByServer) &&
-      this.producers.video &&
-      !this.producers.video.paused
+      this.localProducers.video &&
+      !this.localProducers.video.producer.paused
     ) {
-      this.pauseVideo();
+      await this.pauseProducer(ProducerLabel.video);
     }
   }
 
-  async pauseVideo(reason?: PRODUCER_UPDATE_REASONS) {
-    if (!this.producers.video) return;
-    await this.updateProducer(this.producers.video, true, reason);
+  // === Local media operations ===
+
+  async produce(track: MediaStreamTrack, label: ProducerLabel): Promise<void> {
+    if (!this.producerTransport)
+      throw new Error(`RoomClient is not able to produce media`);
+    if (this.localProducers[label])
+      throw new Error(`RoomClient is already producing ${label}`);
+
+    const producer = await this.producerTransport.produce({
+      ...config[track.kind as MediaKind],
+      track,
+      appData: { label, startPaused: !track.enabled },
+    });
+    const stream = new MediaStream();
+    stream.addTrack(track);
+
+    this.localProducers[label] = {
+      stream,
+      producer,
+    };
+
+    track.addEventListener("ended", () => {
+      const localProducer = this.localProducers[label];
+      if (localProducer && localProducer.producer.track === track) {
+        this.closeProducer(label);
+      }
+    });
+
+    this.emitProducers();
   }
 
-  async resumeVideo() {
-    if (!this.producers.video) return;
-    // Do not allow resuming video when remote video muted
-    if (this.user.status.includes(UserStatus.VideoMutedByServer)) return;
-    await this.updateProducer(this.producers.video, false);
+  private emitProducers(): void {
+    this.emitter.emit(
+      "localProducers",
+      Object.fromEntries(
+        Object.entries(this.localProducers).map(
+          ([label, { producer, stream }]) => [
+            label,
+            { paused: producer.paused, stream },
+          ]
+        )
+      )
+    );
   }
 
-  async pauseAudio() {
-    if (!this.producers.audio) return;
-    await this.updateProducer(this.producers.audio, true);
+  async closeProducer(label: ProducerLabel): Promise<void> {
+    const localProducer = this.localProducers[label];
+
+    if (!localProducer) return;
+
+    await localProducer.producer.close();
+    await this.client.emit("producerClose", {
+      producerId: localProducer.producer.id,
+    });
+    delete this.localProducers[label];
+
+    this.emitProducers();
   }
 
-  async resumeAudio() {
-    if (!this.producers.audio) return;
-    // Do not allow resuming audio when remote muted
-    if (this.user.status.includes(UserStatus.AudioMutedByServer)) {
+  async pauseProducer(label: ProducerLabel): Promise<void> {
+    const localProducer = this.localProducers[label];
+    if (!localProducer) return;
+    await this.updateProducer(localProducer.producer, true);
+  }
+
+  async resumeProducer(label: ProducerLabel) {
+    const localProducer = this.localProducers[label];
+    if (!localProducer) return;
+
+    // Do not allow resuming labels paused by the server
+    if (
+      (label === ProducerLabel.video &&
+        this.user.status.includes(UserStatus.VideoMutedByServer)) ||
+      (label === ProducerLabel.audio &&
+        this.user.status.includes(UserStatus.AudioMutedByServer))
+    )
       return;
-    }
-    await this.updateProducer(this.producers.audio, false);
+
+    await this.updateProducer(localProducer.producer, false);
   }
 
+  // === Active network operations ===
   async terminate() {
     await this.client.emit("terminate", {});
   }
@@ -653,40 +485,33 @@ class RoomClient {
   }
 
   async setPreferredSimulcastLayer({
-    peerId,
-    label,
+    consumerId,
     spatialLayer,
     temporalLayer,
   }: {
-    peerId: string;
-    label: ProducerLabel;
+    consumerId: string;
     spatialLayer: number;
     temporalLayer?: number;
   }) {
-    const consumer = this.peers[peerId]?.consumers[label];
-    if (!consumer) return;
-
     await this.client.emit("setPreferredSimulcastLayer", {
-      consumerId: consumer.id,
+      consumerId,
       spatialLayer,
       temporalLayer,
     });
   }
 
   async close() {
-    if (this.heartbeat) clearInterval(this.heartbeat);
     this.client.close();
     this.consumerTransport.close();
     this.producerTransport?.close();
-    this.producers.audio?.close();
-    this.producers.video?.close();
-    this.producers.screenshare?.close();
+    Object.values(this.localProducers).forEach(({ producer }) =>
+      producer.close()
+    );
     this.emitter.all.clear();
     this.client.connectionMonitor.stop();
-    Object.values(this.peers).forEach((peer) => {
-      peer.consumers.audio?.close();
-      peer.consumers.video?.close();
-    });
+    Array.from(this.consumers.values()).forEach(({ consumer }) =>
+      consumer.close()
+    );
   }
 
   private async updateProducer(
@@ -694,25 +519,90 @@ class RoomClient {
     paused: boolean,
     reason?: PRODUCER_UPDATE_REASONS
   ) {
-    paused ? producer.pause() : producer.resume();
-    this.emitter.emit("onProducerUpdate", {
-      producerId: producer.id,
-      paused,
-      label: producer.appData.label,
-      type: producer.kind as MediaKind,
-    });
+    if (paused) {
+      producer.pause();
+    } else {
+      producer.resume();
+    }
     await this.client.emit("producerUpdate", {
-      callId: this.callId,
       producerId: producer.id,
       paused,
       label: producer.appData.label,
       type: producer.kind as MediaKind,
       ...(reason ? { reason: reason } : {}),
     });
+    this.emitProducers();
   }
 
-  getPeers() {
-    return Object.values(this.peers);
+  // === Initial handshake ===
+  static async connect(call: {
+    id: string;
+    url: string;
+    token: string;
+  }): Promise<RoomClient> {
+    const client = await Client.connect(call.url);
+
+    // Request to join the room.
+    const {
+      role,
+      userId,
+      status,
+      producerTransportInfo,
+      consumerTransportInfo,
+      routerRtpCapabilities,
+    } = await client.emit("join", {
+      token: call.token,
+    });
+
+    // Load up a local media device consistent with server
+    const device = new mediasoupClient.Device();
+    await device.load({ routerRtpCapabilities });
+
+    // this handler is necessary to finish connecting a transport
+    // https://mediasoup.org/documentation/v3/mediasoup-client/api/#transport-on-connect
+    const finishTransportConnection =
+      (transportId: string) =>
+      (
+        { dtlsParameters }: { dtlsParameters: DtlsParameters },
+        onSuccess: () => void,
+        onFailure: (e: unknown) => void
+      ) => {
+        client
+          .emit("establishDtls", {
+            dtlsParameters,
+            transportId: transportId,
+          })
+          .then(onSuccess, onFailure);
+      };
+
+    let producerTransport: Transport | null = null;
+    if (producerTransportInfo) {
+      producerTransport = device.createSendTransport(producerTransportInfo);
+
+      producerTransport.on(
+        "connect",
+        finishTransportConnection(producerTransport.id)
+      );
+    }
+
+    const consumerTransport = device.createRecvTransport(consumerTransportInfo);
+    consumerTransport.on(
+      "connect",
+      finishTransportConnection(consumerTransport.id)
+    );
+
+    await client.emit("declareRtpCapabilities", {
+      rtpCapabilities: device.rtpCapabilities,
+    });
+
+    return new RoomClient({
+      client,
+      producerTransport,
+      consumerTransport,
+      role,
+      userId,
+      status,
+    });
   }
 }
 
