@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0]
+
+- Consolidates producers and consumers into streams indexed by `ProducerLabels`.
+  - `localVideo` and `localAudio` replaced with `localProducers[label]`
+  - `peer.stream`, `peer.audioStream`, and `peer.screenshareStream` replaced by `peer.consumers[label].stream`
+  - `peer.pausedStates[label]` replaced by `peer.consumers[label].paused`
+- Uses the new `state` event from CVH. Related API updates:
+  - `peers` is now an object with socket ids as keys, to give a way to differentiate between multiple clients from the same user.
+  - The returned `user` object is now a `Peer` object just like every other `Peer`.
+- Frux-related updates:
+  - `setDisableFrux` removed and replaced by `enableFrux` with opposite function
+  - Debugging functions `simulatePingLatency` and `stopSimulatingPingLatency` exposed
+  - `videoDisabled` property renamed to `badConnection`
+
 ## [1.4.0] - 2023-04-26
 
 - Announce monitor join events
