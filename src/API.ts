@@ -21,7 +21,7 @@ export type InputConnectionState = {
 };
 
 export type OutputConnectionState = InputConnectionState & {
-  videoDisabled: boolean;
+  badConnection: boolean;
 };
 
 export enum CallStatus {

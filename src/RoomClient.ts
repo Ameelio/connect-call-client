@@ -25,7 +25,7 @@ import Client from "./Client";
 const unknownConnectionState = {
   quality: ConnectionStateQuality.unknown,
   ping: NaN,
-  videoDisabled: false,
+  badConnection: false,
 };
 
 const config: Record<MediaKind, ProducerOptions> = {
@@ -181,18 +181,17 @@ class RoomClient {
       this.emitState();
     });
 
+    // Everyone always monitors connection
+    client.connectionMonitor.start();
+    client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
+      this.client.emit("connectionState", currentQuality);
+    });
+
     // now that our handlers are prepared, we're reading to begin consuming
     void client.emit("finishConnecting", {});
   }
 
   enableFrux() {
-    this.client.connectionMonitor.start();
-    this.client.connectionMonitor.emitter.on(
-      "quality",
-      async (currentQuality) => {
-        this.client.emit("connectionState", currentQuality);
-      }
-    );
     this.fruxEnabled = true;
   }
 
@@ -218,7 +217,7 @@ class RoomClient {
         this.user.connectionState = selfReport.connectionState;
 
         if (
-          this.user.connectionState.videoDisabled &&
+          this.user.connectionState.badConnection &&
           this.localProducers[ProducerLabel.video]?.producer.paused === false
         ) {
           this.pauseProducer(ProducerLabel.video);
@@ -445,7 +444,7 @@ class RoomClient {
     if (
       label === ProducerLabel.video &&
       this.fruxEnabled &&
-      this.user.connectionState.videoDisabled
+      this.user.connectionState.badConnection
     )
       return;
 

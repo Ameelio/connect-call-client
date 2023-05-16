@@ -31,7 +31,7 @@ Object.defineProperty(window, "MediaStream", {
 const connectionState = {
   quality: ConnectionStateQuality.excellent,
   ping: 0,
-  videoDisabled: false,
+  badConnection: false,
 };
 
 const onPeerConnected = jest.fn();
@@ -307,7 +307,7 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": 0,
             "quality": "excellent",
-            "videoDisabled": false,
+            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
@@ -390,7 +390,7 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": 0,
             "quality": "excellent",
-            "videoDisabled": false,
+            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
@@ -496,7 +496,7 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": 0,
             "quality": "excellent",
-            "videoDisabled": false,
+            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
@@ -603,7 +603,7 @@ describe("useConnectCall", () => {
           "connectionState": Object {
             "ping": 0,
             "quality": "excellent",
-            "videoDisabled": false,
+            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
