@@ -305,9 +305,9 @@ describe("useConnectCall", () => {
       Object {
         "socket-id": Object {
           "connectionState": Object {
+            "badConnection": false,
             "ping": 0,
             "quality": "excellent",
-            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
@@ -388,9 +388,9 @@ describe("useConnectCall", () => {
       Object {
         "socket-id": Object {
           "connectionState": Object {
+            "badConnection": false,
             "ping": 0,
             "quality": "excellent",
-            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
@@ -494,9 +494,9 @@ describe("useConnectCall", () => {
       Object {
         "socket-id": Object {
           "connectionState": Object {
+            "badConnection": false,
             "ping": 0,
             "quality": "excellent",
-            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
@@ -601,9 +601,9 @@ describe("useConnectCall", () => {
       Object {
         "socket-id": Object {
           "connectionState": Object {
+            "badConnection": false,
             "ping": 0,
             "quality": "excellent",
-            "badConnection": false,
           },
           "consumers": Object {
             "audio": Object {
