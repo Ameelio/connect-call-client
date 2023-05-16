@@ -16,21 +16,21 @@ const PING_EVENT = "ccc-ping";
 const PONG_EVENT = "ccc-pong";
 
 const qualities = [
-  ConnectionStateQuality.bad,
-  ConnectionStateQuality.poor,
-  ConnectionStateQuality.average,
-  ConnectionStateQuality.good,
   ConnectionStateQuality.excellent,
+  ConnectionStateQuality.good,
+  ConnectionStateQuality.average,
+  ConnectionStateQuality.poor,
+  ConnectionStateQuality.bad,
   ConnectionStateQuality.unknown,
 ];
 
 // QualityRange defines the ranges by which we establish the Quality in milliseconds
 const QualityRange: Record<ConnectionStateQuality, number> = {
-  [ConnectionStateQuality.bad]: 50,
-  [ConnectionStateQuality.poor]: 150,
+  [ConnectionStateQuality.excellent]: 50,
+  [ConnectionStateQuality.good]: 150,
   [ConnectionStateQuality.average]: 500,
-  [ConnectionStateQuality.good]: 1000,
-  [ConnectionStateQuality.excellent]: Infinity,
+  [ConnectionStateQuality.poor]: 1000,
+  [ConnectionStateQuality.bad]: Infinity,
   [ConnectionStateQuality.unknown]: NaN,
 };
 
