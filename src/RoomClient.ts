@@ -28,8 +28,17 @@ const unknownConnectionState = {
   badConnection: false,
 };
 
-const config: Record<MediaKind, ProducerOptions> = {
-  video: {
+const config: Record<ProducerLabel, ProducerOptions> = {
+  [ProducerLabel.screenshare]: {
+    encodings: [
+      {
+        rid: "r0",
+        maxBitrate: 900000,
+      },
+    ],
+    codecOptions: {},
+  },
+  [ProducerLabel.video]: {
     encodings: [
       {
         rid: "r0",
@@ -52,7 +61,7 @@ const config: Record<MediaKind, ProducerOptions> = {
       videoGoogleStartBitrate: 1000,
     },
   },
-  audio: {},
+  [ProducerLabel.audio]: {},
 };
 
 export type Peer = {
@@ -378,7 +387,7 @@ class RoomClient {
       throw new Error(`RoomClient is already producing ${label}`);
 
     const producer = await this.producerTransport.produce({
-      ...config[track.kind as MediaKind],
+      ...config[label],
       track,
       appData: { label, startPaused: !track.enabled },
     });
