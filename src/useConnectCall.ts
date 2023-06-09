@@ -185,6 +185,8 @@ const useConnectCall = ({
 
     // When we disconnect, reinitialize
     client.on("disconnect", (reason: DisconnectReason) => {
+      if (client) client.close();
+
       setClient(undefined);
       setDisconnectReason(reason);
       if (reason === DisconnectReason.error) {
