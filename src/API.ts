@@ -8,6 +8,7 @@ import {
 
 export enum DisconnectReason {
   error = "error",
+  roomClose = "roomClose",
   connectedElsewhere = "connectedElsewhere",
 }
 
