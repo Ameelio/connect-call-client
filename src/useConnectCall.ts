@@ -322,7 +322,7 @@ const useConnectCall = ({
   const disconnect = useCallback(async () => {
     if (!client) return;
     setClientStatus(ClientStatus.disconnected);
-    client.close();
+    client.close(true); // Also stop user media grab
   }, [client]);
 
   const closeProducer = useCallback(
@@ -338,7 +338,9 @@ const useConnectCall = ({
   useEffect(() => {
     if (!client) return;
     setClientStatus(ClientStatus.connected);
-    return () => void disconnect();
+    return () => {
+      setClientStatus(ClientStatus.disconnected);
+    };
   }, [client, disconnect]);
 
   const sendMessage = useCallback(

@@ -403,6 +403,7 @@ class RoomClient {
     const producer = await this.producerTransport.produce({
       ...config[label],
       track,
+      stopTracks: false,
       appData: { label, startPaused: !track.enabled },
     });
     const stream = new MediaStream();
@@ -551,13 +552,16 @@ class RoomClient {
     });
   }
 
-  async close() {
+  async close(stopTracks?: boolean) {
     this.client.close();
     this.consumerTransport.close();
     this.producerTransport?.close();
-    Object.values(this.localProducers).forEach(({ producer }) =>
-      producer.close()
-    );
+    Object.values(this.localProducers).forEach(({ producer }) => {
+      if (stopTracks) {
+        producer.track?.stop();
+      }
+      producer.close();
+    });
     this.emitter.all.clear();
     this.client.connectionMonitor.stop();
     Array.from(this.consumers.values()).forEach(({ consumer }) =>
