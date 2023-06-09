@@ -40,6 +40,8 @@ export type ConnectCall = {
   closeProducer: (label: ProducerLabel) => Promise<void>;
   pauseProducer: (label: ProducerLabel) => void;
   resumeProducer: (label: ProducerLabel) => void;
+  disconnectReason?: DisconnectReason;
+  manuallyReconnect: () => void;
   produceTrack: (
     track: MediaStreamTrack,
     label: ProducerLabel
@@ -142,6 +144,7 @@ const useConnectCall = ({
   );
   const [callStatus, setCallStatus] = useState<CallStatus>();
 
+  const [disconnectReason, setDisconnectReason] = useState<DisconnectReason>();
   const [automaticallyInit, setAutomaticallyInit] = useState(true);
 
   // To avoid problems with react strict mode,
@@ -183,6 +186,7 @@ const useConnectCall = ({
     // When we disconnect, reinitialize
     client.on("disconnect", (reason: DisconnectReason) => {
       setClient(undefined);
+      setDisconnectReason(reason);
       if (reason === DisconnectReason.error) {
         setAutomaticallyInit(true);
       }
@@ -255,12 +259,17 @@ const useConnectCall = ({
     [call]
   );
 
+  const manuallyReconnect = useCallback(() => {
+    setAutomaticallyInit(true);
+  }, []);
+
   // create a client for the call, subject to debounce
   useEffect(() => {
     if (!debounceReady) return;
 
     if (!client && automaticallyInit) {
       setAutomaticallyInit(false);
+      setDisconnectReason(undefined);
       reinitializeClient(localProducers);
     }
   }, [
@@ -489,6 +498,10 @@ const useConnectCall = ({
 
     // Disconnect
     disconnect,
+
+    // Reconnect
+    disconnectReason,
+    manuallyReconnect,
 
     // Server operations
     textMessage,
