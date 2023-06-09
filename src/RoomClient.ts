@@ -199,12 +199,7 @@ class RoomClient {
 
     // Respond to unintentional disconnect
     client.on("disconnect", (reason: string) => {
-      if (
-        ![
-          "server namespace disconnect",
-          "client namespace disconnect",
-        ].includes(reason)
-      ) {
+      if (!["io server disconnect", "io client disconnect"].includes(reason)) {
         this.emitter.emit("disconnect", DisconnectReason.error);
       }
     });
