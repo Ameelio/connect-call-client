@@ -11,6 +11,7 @@ import mitt, { Emitter } from "mitt";
 import {
   CallStatus,
   ConnectionStateQuality,
+  DisconnectReason,
   OutputConnectionState,
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
@@ -89,6 +90,7 @@ type Events = {
   >;
   status: CallStatus;
   self: Peer;
+  disconnect: DisconnectReason;
 };
 
 class PromiseQueue {
@@ -188,6 +190,23 @@ class RoomClient {
       this.receiveState(state);
       await this.checkLocalMute();
       this.emitState();
+    });
+
+    // Respond to intentional disconnect
+    client.on("manualDisconnect", (reason: DisconnectReason) => {
+      this.emitter.emit("disconnect", reason);
+    });
+
+    // Respond to unintentional disconnect
+    client.on("disconnect", (reason: string) => {
+      if (
+        ![
+          "server namespace disconnect",
+          "client namespace disconnect",
+        ].includes(reason)
+      ) {
+        this.emitter.emit("disconnect", DisconnectReason.error);
+      }
     });
 
     // Everyone always monitors connection
