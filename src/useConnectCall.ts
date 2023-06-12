@@ -341,7 +341,7 @@ const useConnectCall = ({
     return () => {
       setClientStatus(ClientStatus.disconnected);
     };
-  }, [client, disconnect]);
+  }, [client]);
 
   const sendMessage = useCallback(
     async (contents: string) => {
