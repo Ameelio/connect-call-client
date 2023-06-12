@@ -11,6 +11,7 @@ import mitt, { Emitter } from "mitt";
 import {
   CallStatus,
   ConnectionStateQuality,
+  DisconnectReason,
   OutputConnectionState,
   ProducerLabel,
   PRODUCER_UPDATE_REASONS,
@@ -89,6 +90,7 @@ type Events = {
   >;
   status: CallStatus;
   self: Peer;
+  disconnect: DisconnectReason;
 };
 
 class PromiseQueue {
@@ -188,6 +190,18 @@ class RoomClient {
       this.receiveState(state);
       await this.checkLocalMute();
       this.emitState();
+    });
+
+    // Respond to intentional disconnect
+    client.on("manualDisconnect", (reason: DisconnectReason) => {
+      this.emitter.emit("disconnect", reason);
+    });
+
+    // Respond to unintentional disconnect
+    client.on("disconnect", (reason: string) => {
+      if (!["io server disconnect", "io client disconnect"].includes(reason)) {
+        this.emitter.emit("disconnect", DisconnectReason.error);
+      }
     });
 
     // Everyone always monitors connection
@@ -389,6 +403,7 @@ class RoomClient {
     const producer = await this.producerTransport.produce({
       ...config[label],
       track,
+      stopTracks: false,
       appData: { label, startPaused: !track.enabled },
     });
     const stream = new MediaStream();
@@ -537,13 +552,16 @@ class RoomClient {
     });
   }
 
-  async close() {
+  async close(stopTracks?: boolean) {
     this.client.close();
     this.consumerTransport.close();
     this.producerTransport?.close();
-    Object.values(this.localProducers).forEach(({ producer }) =>
-      producer.close()
-    );
+    Object.values(this.localProducers).forEach(({ producer }) => {
+      if (stopTracks) {
+        producer.track?.stop();
+      }
+      producer.close();
+    });
     this.emitter.all.clear();
     this.client.connectionMonitor.stop();
     Array.from(this.consumers.values()).forEach(({ consumer }) =>

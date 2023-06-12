@@ -6,6 +6,12 @@ import {
   TransportOptions,
 } from "mediasoup-client/lib/types";
 
+export enum DisconnectReason {
+  error = "error",
+  roomClose = "roomClose",
+  connectedElsewhere = "connectedElsewhere",
+}
+
 export enum ConnectionStateQuality {
   excellent = "excellent",
   good = "good",
@@ -100,6 +106,8 @@ export type ServerMessages = {
   };
   timer: { name: "maxDuration"; msRemaining: number; msElapsed: number };
   state: PublishedRoomState;
+  manualDisconnect: DisconnectReason;
+  disconnect: string; // This is not actually a server message but is still a socket.on() handler
 };
 
 export type ClientMessages = {

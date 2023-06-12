@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CallStatus, ProducerLabel, Role, User } from "./API";
+import { CallStatus, DisconnectReason, ProducerLabel, Role, User } from "./API";
 import RoomClient, { Peer } from "./RoomClient";
 
 export enum ClientStatus {
@@ -40,6 +40,8 @@ export type ConnectCall = {
   closeProducer: (label: ProducerLabel) => Promise<void>;
   pauseProducer: (label: ProducerLabel) => void;
   resumeProducer: (label: ProducerLabel) => void;
+  disconnectReason?: DisconnectReason;
+  manuallyReconnect: () => void;
   produceTrack: (
     track: MediaStreamTrack,
     label: ProducerLabel
@@ -142,6 +144,9 @@ const useConnectCall = ({
   );
   const [callStatus, setCallStatus] = useState<CallStatus>();
 
+  const [disconnectReason, setDisconnectReason] = useState<DisconnectReason>();
+  const [automaticallyInit, setAutomaticallyInit] = useState(true);
+
   // To avoid problems with react strict mode,
   // don't initialize until 10 ms have passed without unmounting.
   const [debounceReady, setDebounceReady] = useState(false);
@@ -177,6 +182,17 @@ const useConnectCall = ({
 
     // Request most recent state
     client.emitState();
+
+    // When we disconnect, reinitialize
+    client.on("disconnect", (reason: DisconnectReason) => {
+      if (client) client.close();
+
+      setClient(undefined);
+      setDisconnectReason(reason);
+      if (reason === DisconnectReason.error) {
+        setAutomaticallyInit(true);
+      }
+    });
   }, []);
 
   const [fruxEnabled, setFruxEnabled] = useState(false);
@@ -205,24 +221,66 @@ const useConnectCall = ({
     }
   }, [fruxEnabled, client]);
 
-  // create a client for the call, subject to debounce
-  useEffect(() => {
-    if (call?.id === undefined) return;
-    if (!debounceReady) return;
-    RoomClient.connect({
-      id: call.id,
-      url: call.url,
-      token: call.token,
-    })
-      .then((client) => {
+  const reinitializeClient = useCallback(
+    async (
+      producers: Partial<
+        Record<ProducerLabel, { stream: MediaStream; paused: boolean }>
+      >
+    ) => {
+      if (call?.id === undefined) return;
+
+      try {
+        const client = await RoomClient.connect({
+          id: call.id,
+          url: call.url,
+          token: call.token,
+        });
+
         setClient(client);
         bindClient(client);
-      })
-      .catch((error) => {
+
+        // Produce inherited streams
+        Object.values(ProducerLabel).forEach((label) => {
+          const producer = producers[label];
+          if (producer) {
+            const track =
+              label === ProducerLabel.audio
+                ? producer.stream.getAudioTracks()[0]
+                : producer.stream.getVideoTracks()[0];
+
+            client.produce(track, label);
+          }
+        });
+      } catch (error) {
         setClientStatus(ClientStatus.errored);
-        setError(error);
-      });
-  }, [call?.id, call?.url, call?.token, debounceReady, bindClient]);
+        if (error instanceof Error) {
+          setError(error);
+        }
+      }
+    },
+    [call]
+  );
+
+  const manuallyReconnect = useCallback(() => {
+    setAutomaticallyInit(true);
+  }, []);
+
+  // create a client for the call, subject to debounce
+  useEffect(() => {
+    if (!debounceReady) return;
+
+    if (!client && automaticallyInit) {
+      setAutomaticallyInit(false);
+      setDisconnectReason(undefined);
+      reinitializeClient(localProducers);
+    }
+  }, [
+    debounceReady,
+    reinitializeClient,
+    client,
+    localProducers,
+    automaticallyInit,
+  ]);
 
   // "message" and "timer" handlers may change over time,
   // and we can afford to miss quick ones at the very start.
@@ -264,7 +322,7 @@ const useConnectCall = ({
   const disconnect = useCallback(async () => {
     if (!client) return;
     setClientStatus(ClientStatus.disconnected);
-    client.close();
+    client.close(true); // Also stop user media grab
   }, [client]);
 
   const closeProducer = useCallback(
@@ -280,8 +338,10 @@ const useConnectCall = ({
   useEffect(() => {
     if (!client) return;
     setClientStatus(ClientStatus.connected);
-    return () => void disconnect();
-  }, [client, disconnect]);
+    return () => {
+      setClientStatus(ClientStatus.disconnected);
+    };
+  }, [client]);
 
   const sendMessage = useCallback(
     async (contents: string) => {
@@ -442,6 +502,10 @@ const useConnectCall = ({
 
     // Disconnect
     disconnect,
+
+    // Reconnect
+    disconnectReason,
+    manuallyReconnect,
 
     // Server operations
     textMessage,
