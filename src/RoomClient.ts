@@ -484,6 +484,20 @@ class RoomClient {
   }
 
   // === Active network operations ===
+  async pauseConsumer(targetSocketId: string, label: ProducerLabel) {
+    await this.client.emit("pauseConsumer", {
+      targetSocketId,
+      label,
+    });
+  }
+
+  async resumeConsumer(targetSocketId: string, label: ProducerLabel) {
+    await this.client.emit("resumeConsumer", {
+      targetSocketId,
+      label,
+    });
+  }
+
   async terminate() {
     await this.client.emit("terminate", {});
   }

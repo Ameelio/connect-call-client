@@ -46,6 +46,7 @@ export type ConnectCall = {
     track: MediaStreamTrack,
     label: ProducerLabel
   ) => Promise<void>;
+  manualConsumerPauses: Record<string, Partial<Record<ProducerLabel, boolean>>>;
   peers: Record<string, Peer>;
   monitors: Record<string, Peer>;
   messages: Message[];
@@ -62,6 +63,14 @@ export type ConnectCall = {
   remoteAudioUnmute: (targetUserId: string) => Promise<void>;
   remoteVideoMute: (targetUserId: string) => Promise<void>;
   remoteVideoUnmute: (targetUserId: string) => Promise<void>;
+  pauseConsumer: (
+    targetSocketId: string,
+    label: ProducerLabel
+  ) => Promise<void>;
+  resumeConsumer: (
+    targetSocketId: string,
+    label: ProducerLabel
+  ) => Promise<void>;
   raiseHand: () => Promise<void>;
   lowerHand: () => Promise<void>;
   enableFrux: () => void;
@@ -122,6 +131,9 @@ const useConnectCall = ({
 
   const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [monitors, setMonitors] = useState<Record<string, Peer>>({});
+  const [manualConsumerPauses, setManualConsumerPauses] = useState<
+    Record<string, Partial<Record<ProducerLabel, boolean>>>
+  >({});
 
   useChangeTracker({
     onAdd: (peer) => onPeerConnected?.(peer.user),
@@ -469,6 +481,38 @@ const useConnectCall = ({
     [client]
   );
 
+  const pauseConsumer = useCallback(
+    async (targetSocketId: string, label: ProducerLabel) => {
+      if (client) {
+        setManualConsumerPauses({
+          ...manualConsumerPauses,
+          targetSocketId: {
+            ...(manualConsumerPauses[targetSocketId] || {}),
+            [label]: true,
+          },
+        });
+        await client.pauseConsumer(targetSocketId, label);
+      }
+    },
+    [client]
+  );
+
+  const resumeConsumer = useCallback(
+    async (targetSocketId: string, label: ProducerLabel) => {
+      if (client) {
+        setManualConsumerPauses({
+          ...manualConsumerPauses,
+          targetSocketId: {
+            ...(manualConsumerPauses[targetSocketId] || {}),
+            [label]: false,
+          },
+        });
+        await client.resumeConsumer(targetSocketId, label);
+      }
+    },
+    [client]
+  );
+
   return {
     // Connection and room status
     clientStatus,
@@ -518,6 +562,10 @@ const useConnectCall = ({
     lowerHand,
     remoteLowerHand,
     setPreferredSimulcastLayer,
+
+    manualConsumerPauses,
+    pauseConsumer,
+    resumeConsumer,
 
     // Debugging
     simulatePingLatency,

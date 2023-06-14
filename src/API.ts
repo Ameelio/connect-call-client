@@ -111,6 +111,14 @@ export type ServerMessages = {
 };
 
 export type ClientMessages = {
+  pauseConsumer: [
+    { targetSocketId: string; label: ProducerLabel },
+    { success: true }
+  ];
+  resumeConsumer: [
+    { targetSocketId: string; label: ProducerLabel },
+    { success: true }
+  ];
   connectionState: [InputConnectionState, { success: true }];
   join: [
     { token: string },
