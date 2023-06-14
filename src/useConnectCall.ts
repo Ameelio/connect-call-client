@@ -486,7 +486,7 @@ const useConnectCall = ({
       if (client) {
         setManualConsumerPauses({
           ...manualConsumerPauses,
-          targetSocketId: {
+          [targetSocketId]: {
             ...(manualConsumerPauses[targetSocketId] || {}),
             [label]: true,
           },
@@ -502,7 +502,7 @@ const useConnectCall = ({
       if (client) {
         setManualConsumerPauses({
           ...manualConsumerPauses,
-          targetSocketId: {
+          [targetSocketId]: {
             ...(manualConsumerPauses[targetSocketId] || {}),
             [label]: false,
           },
