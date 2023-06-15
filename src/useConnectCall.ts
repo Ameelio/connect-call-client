@@ -477,32 +477,14 @@ const useConnectCall = ({
 
   const pauseConsumer = useCallback(
     async (peerId: string, label: ProducerLabel) => {
-      if (client) {
-        setManualConsumerPauses({
-          ...manualConsumerPauses,
-          [peerId]: {
-            ...(manualConsumerPauses[peerId] || {}),
-            [label]: true,
-          },
-        });
-        await client.pauseConsumer(peerId, label);
-      }
+      await client.pauseConsumer(peerId, label);
     },
     [client]
   );
 
   const resumeConsumer = useCallback(
     async (peerId: string, label: ProducerLabel) => {
-      if (client) {
-        setManualConsumerPauses({
-          ...manualConsumerPauses,
-          [peerId]: {
-            ...(manualConsumerPauses[peerId] || {}),
-            [label]: false,
-          },
-        });
-        await client.resumeConsumer(peerId, label);
-      }
+      await client.resumeConsumer(peerId, label);
     },
     [client]
   );
@@ -557,7 +539,6 @@ const useConnectCall = ({
     remoteLowerHand,
     setPreferredSimulcastLayer,
 
-    manualConsumerPauses,
     pauseConsumer,
     resumeConsumer,
 
