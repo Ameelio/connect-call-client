@@ -82,6 +82,7 @@ export type PublishedParticipant = {
   peerId: string;
   user: User;
   consumers: Partial<Record<ProducerLabel, PublishedConsumerInfo>>;
+  manualConsumerPauses: Partial<Record<ProducerLabel, boolean>>;
   status: UserStatus[];
   connectionState: OutputConnectionState;
 };
