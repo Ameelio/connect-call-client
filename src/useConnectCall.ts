@@ -46,7 +46,6 @@ export type ConnectCall = {
     track: MediaStreamTrack,
     label: ProducerLabel
   ) => Promise<void>;
-  manualConsumerPauses: Record<string, Partial<Record<ProducerLabel, boolean>>>;
   peers: Record<string, Peer>;
   monitors: Record<string, Peer>;
   messages: Message[];
@@ -125,9 +124,6 @@ const useConnectCall = ({
 
   const [peers, setPeers] = useState<Record<string, Peer>>({});
   const [monitors, setMonitors] = useState<Record<string, Peer>>({});
-  const [manualConsumerPauses, setManualConsumerPauses] = useState<
-    Record<string, Partial<Record<ProducerLabel, boolean>>>
-  >({});
 
   useChangeTracker({
     onAdd: (peer) => onPeerConnected?.(peer.user),
@@ -477,14 +473,14 @@ const useConnectCall = ({
 
   const pauseConsumer = useCallback(
     async (peerId: string, label: ProducerLabel) => {
-      await client.pauseConsumer(peerId, label);
+      if (client) await client.pauseConsumer(peerId, label);
     },
     [client]
   );
 
   const resumeConsumer = useCallback(
     async (peerId: string, label: ProducerLabel) => {
-      await client.resumeConsumer(peerId, label);
+      if (client) await client.resumeConsumer(peerId, label);
     },
     [client]
   );
