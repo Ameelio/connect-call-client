@@ -99,6 +99,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "socket-id": {
+            peerId: "socket-id",
             user: {
               id: "test-id",
               role: Role.webinarAttendee,
@@ -108,6 +109,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.webinarAttendee,
@@ -227,6 +229,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "socket-id": {
+            peerId: "socket-id",
             user: {
               id: "test-id",
               role: Role.visitParticipant,
@@ -236,6 +239,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.visitParticipant,
@@ -266,6 +270,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "socket-id": {
+            peerId: "socket-id",
             user: {
               id: "test-id",
               role: Role.visitParticipant,
@@ -284,6 +289,7 @@ describe("useConnectCall", () => {
             },
           },
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.visitParticipant,
@@ -329,6 +335,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "peerId": "socket-id",
           "status": Array [],
           "user": Object {
             "id": "test-id",
@@ -342,6 +349,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "socket-id": {
+            peerId: "socket-id",
             user: {
               id: "test-id",
               role: Role.visitParticipant,
@@ -368,6 +376,7 @@ describe("useConnectCall", () => {
             },
           },
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.visitParticipant,
@@ -430,6 +439,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "peerId": "socket-id",
           "status": Array [],
           "user": Object {
             "id": "test-id",
@@ -443,6 +453,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "socket-id": {
+            peerId: "socket-id",
             user: {
               id: "test-id",
               role: Role.visitParticipant,
@@ -469,6 +480,7 @@ describe("useConnectCall", () => {
             },
           },
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.visitParticipant,
@@ -536,6 +548,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "peerId": "socket-id",
           "status": Array [],
           "user": Object {
             "id": "test-id",
@@ -549,6 +562,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "socket-id": {
+            peerId: "socket-id",
             user: {
               id: "test-id",
               role: Role.visitParticipant,
@@ -575,6 +589,7 @@ describe("useConnectCall", () => {
             },
           },
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.visitParticipant,
@@ -643,6 +658,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "peerId": "socket-id",
           "status": Array [],
           "user": Object {
             "id": "test-id",
@@ -670,6 +686,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "socket-id": {
+            peerId: "socket-id",
             user: {
               id: "test-id",
               role: Role.webinarAttendee,
@@ -679,6 +696,7 @@ describe("useConnectCall", () => {
             consumers: {},
           },
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.webinarAttendee,
@@ -700,6 +718,7 @@ describe("useConnectCall", () => {
       client.sendServerEvent("state", {
         participants: {
           "self-socket-id": {
+            peerId: "self-socket-id",
             user: {
               id: "self-test-id",
               role: Role.webinarAttendee,
