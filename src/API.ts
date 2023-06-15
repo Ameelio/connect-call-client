@@ -79,8 +79,10 @@ export type PublishedConsumerInfo = {
 };
 
 export type PublishedParticipant = {
+  peerId: string;
   user: User;
   consumers: Partial<Record<ProducerLabel, PublishedConsumerInfo>>;
+  manualConsumerPauses: Partial<Record<ProducerLabel, boolean>>;
   status: UserStatus[];
   connectionState: OutputConnectionState;
 };
@@ -111,6 +113,8 @@ export type ServerMessages = {
 };
 
 export type ClientMessages = {
+  pauseConsumer: [{ peerId: string; label: ProducerLabel }, { success: true }];
+  resumeConsumer: [{ peerId: string; label: ProducerLabel }, { success: true }];
   connectionState: [InputConnectionState, { success: true }];
   join: [
     { token: string },

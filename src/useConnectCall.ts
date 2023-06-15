@@ -62,6 +62,8 @@ export type ConnectCall = {
   remoteAudioUnmute: (targetUserId: string) => Promise<void>;
   remoteVideoMute: (targetUserId: string) => Promise<void>;
   remoteVideoUnmute: (targetUserId: string) => Promise<void>;
+  pauseConsumer: (peerId: string, label: ProducerLabel) => Promise<void>;
+  resumeConsumer: (peerId: string, label: ProducerLabel) => Promise<void>;
   raiseHand: () => Promise<void>;
   lowerHand: () => Promise<void>;
   enableFrux: () => void;
@@ -469,6 +471,20 @@ const useConnectCall = ({
     [client]
   );
 
+  const pauseConsumer = useCallback(
+    async (peerId: string, label: ProducerLabel) => {
+      if (client) await client.pauseConsumer(peerId, label);
+    },
+    [client]
+  );
+
+  const resumeConsumer = useCallback(
+    async (peerId: string, label: ProducerLabel) => {
+      if (client) await client.resumeConsumer(peerId, label);
+    },
+    [client]
+  );
+
   return {
     // Connection and room status
     clientStatus,
@@ -518,6 +534,9 @@ const useConnectCall = ({
     lowerHand,
     remoteLowerHand,
     setPreferredSimulcastLayer,
+
+    pauseConsumer,
+    resumeConsumer,
 
     // Debugging
     simulatePingLatency,
