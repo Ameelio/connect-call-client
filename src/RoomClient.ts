@@ -66,6 +66,7 @@ const config: Record<ProducerLabel, ProducerOptions> = {
 };
 
 export type Peer = {
+  peerId: string;
   user: User;
   consumers: Partial<
     Record<
@@ -484,16 +485,16 @@ class RoomClient {
   }
 
   // === Active network operations ===
-  async pauseConsumer(targetSocketId: string, label: ProducerLabel) {
+  async pauseConsumer(peerId: string, label: ProducerLabel) {
     await this.client.emit("pauseConsumer", {
-      targetSocketId,
+      peerId,
       label,
     });
   }
 
-  async resumeConsumer(targetSocketId: string, label: ProducerLabel) {
+  async resumeConsumer(peerId: string, label: ProducerLabel) {
     await this.client.emit("resumeConsumer", {
-      targetSocketId,
+      peerId,
       label,
     });
   }

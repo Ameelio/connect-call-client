@@ -79,6 +79,7 @@ export type PublishedConsumerInfo = {
 };
 
 export type PublishedParticipant = {
+  peerId: string;
   user: User;
   consumers: Partial<Record<ProducerLabel, PublishedConsumerInfo>>;
   status: UserStatus[];
@@ -111,14 +112,8 @@ export type ServerMessages = {
 };
 
 export type ClientMessages = {
-  pauseConsumer: [
-    { targetSocketId: string; label: ProducerLabel },
-    { success: true }
-  ];
-  resumeConsumer: [
-    { targetSocketId: string; label: ProducerLabel },
-    { success: true }
-  ];
+  pauseConsumer: [{ peerId: string; label: ProducerLabel }, { success: true }];
+  resumeConsumer: [{ peerId: string; label: ProducerLabel }, { success: true }];
   connectionState: [InputConnectionState, { success: true }];
   join: [
     { token: string },

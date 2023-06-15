@@ -63,14 +63,8 @@ export type ConnectCall = {
   remoteAudioUnmute: (targetUserId: string) => Promise<void>;
   remoteVideoMute: (targetUserId: string) => Promise<void>;
   remoteVideoUnmute: (targetUserId: string) => Promise<void>;
-  pauseConsumer: (
-    targetSocketId: string,
-    label: ProducerLabel
-  ) => Promise<void>;
-  resumeConsumer: (
-    targetSocketId: string,
-    label: ProducerLabel
-  ) => Promise<void>;
+  pauseConsumer: (peerId: string, label: ProducerLabel) => Promise<void>;
+  resumeConsumer: (peerId: string, label: ProducerLabel) => Promise<void>;
   raiseHand: () => Promise<void>;
   lowerHand: () => Promise<void>;
   enableFrux: () => void;
@@ -482,32 +476,32 @@ const useConnectCall = ({
   );
 
   const pauseConsumer = useCallback(
-    async (targetSocketId: string, label: ProducerLabel) => {
+    async (peerId: string, label: ProducerLabel) => {
       if (client) {
         setManualConsumerPauses({
           ...manualConsumerPauses,
-          [targetSocketId]: {
-            ...(manualConsumerPauses[targetSocketId] || {}),
+          [peerId]: {
+            ...(manualConsumerPauses[peerId] || {}),
             [label]: true,
           },
         });
-        await client.pauseConsumer(targetSocketId, label);
+        await client.pauseConsumer(peerId, label);
       }
     },
     [client]
   );
 
   const resumeConsumer = useCallback(
-    async (targetSocketId: string, label: ProducerLabel) => {
+    async (peerId: string, label: ProducerLabel) => {
       if (client) {
         setManualConsumerPauses({
           ...manualConsumerPauses,
-          [targetSocketId]: {
-            ...(manualConsumerPauses[targetSocketId] || {}),
+          [peerId]: {
+            ...(manualConsumerPauses[peerId] || {}),
             [label]: false,
           },
         });
-        await client.resumeConsumer(targetSocketId, label);
+        await client.resumeConsumer(peerId, label);
       }
     },
     [client]
