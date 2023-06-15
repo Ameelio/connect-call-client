@@ -341,6 +341,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "manualConsumerPauses": Object {},
           "peerId": "socket-id",
           "status": Array [],
           "user": Object {
@@ -447,6 +448,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "manualConsumerPauses": Object {},
           "peerId": "socket-id",
           "status": Array [],
           "user": Object {
@@ -558,6 +560,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "manualConsumerPauses": Object {},
           "peerId": "socket-id",
           "status": Array [],
           "user": Object {
@@ -670,6 +673,7 @@ describe("useConnectCall", () => {
               },
             },
           },
+          "manualConsumerPauses": Object {},
           "peerId": "socket-id",
           "status": Array [],
           "user": Object {
