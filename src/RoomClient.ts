@@ -68,6 +68,7 @@ const config: Record<ProducerLabel, ProducerOptions> = {
 export type Peer = {
   peerId: string;
   user: User;
+  manualConsumerPauses: Partial<Record<ProducerLabel, boolean>>;
   consumers: Partial<
     Record<
       ProducerLabel,
