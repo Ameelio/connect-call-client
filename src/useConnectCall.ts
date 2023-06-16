@@ -260,7 +260,7 @@ const useConnectCall = ({
         }
       }
     },
-    [call]
+    [call, bindClient]
   );
 
   const manuallyReconnect = useCallback(() => {
