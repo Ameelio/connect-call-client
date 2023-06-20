@@ -207,10 +207,12 @@ class RoomClient {
     });
 
     // Everyone always monitors connection
-    client.connectionMonitor.start();
-    client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
-      this.client.emit("connectionState", currentQuality);
-    });
+    if (role !== Role.monitor) {
+      client.connectionMonitor.start();
+      client.connectionMonitor.emitter.on("quality", async (currentQuality) => {
+        this.client.emit("connectionState", currentQuality);
+      });
+    }
 
     // now that our handlers are prepared, we're reading to begin consuming
     void client.emit("finishConnecting", {});
