@@ -239,6 +239,7 @@ const useConnectCall = ({
         });
 
         setClient(client);
+        setClientStatus(ClientStatus.connected);
         bindClient(client);
 
         // Produce inherited streams
@@ -260,7 +261,7 @@ const useConnectCall = ({
         }
       }
     },
-    [call]
+    [call, bindClient]
   );
 
   const manuallyReconnect = useCallback(() => {
@@ -321,11 +322,18 @@ const useConnectCall = ({
     };
   }, [client, onNewMessage, onTimer]);
 
-  const disconnect = useCallback(async () => {
-    if (!client) return;
-    setClientStatus(ClientStatus.disconnected);
-    client.close(true); // Also stop user media grab
+  // the disconnect callback will stop user media and permanently close the
+  // current RoomClient. it tracks RoomClient in a ref so that it doesn't
+  // trigger when the client is being rebuilt after a temporary disconnect.
+  const lastClient = useRef<RoomClient>();
+  useEffect(() => {
+    lastClient.current = client;
   }, [client]);
+  const disconnect = useCallback(async () => {
+    if (!lastClient.current) return;
+    setClientStatus(ClientStatus.disconnected);
+    lastClient.current.close(true); // Also stop user media grab
+  }, []);
 
   const closeProducer = useCallback(
     async (label: ProducerLabel) => {
@@ -336,14 +344,11 @@ const useConnectCall = ({
     [client]
   );
 
-  // Report disconnection when disconnected
+  // ensure everything is disconnected and cleaned up when useConnectCall
+  // is unmounted.
   useEffect(() => {
-    if (!client) return;
-    setClientStatus(ClientStatus.connected);
-    return () => {
-      setClientStatus(ClientStatus.disconnected);
-    };
-  }, [client]);
+    return () => void disconnect();
+  }, [disconnect]);
 
   useEffect(() => {
     if (!client) return;

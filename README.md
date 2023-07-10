@@ -18,9 +18,8 @@ import { useConnectCall } from 'connect-call-client';
 
 Due to issues with `npm link` and nested node_modules/, it's recommendeded to build a release package and try it locally in a useful host application:
 
-1. Add a `-rcN` suffix to the package.json version
-2. Create a NPM package: `npm run build && npm pack`
-3. From the host application: `npm install path/to/connect-call-client-a.b.c-rcN.tgz`
+1. Build a release candidate: `npm run build:rc`
+2. From the host application: `npm install path/to/connect-call-client-a.b.c-d.tgz`
 
 ## Releasing
 
