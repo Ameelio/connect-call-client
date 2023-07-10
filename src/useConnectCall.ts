@@ -345,6 +345,14 @@ const useConnectCall = ({
     };
   }, [client]);
 
+  useEffect(() => {
+    if (!client) return;
+    setClientStatus(ClientStatus.connected);
+    return () => {
+      setClientStatus(ClientStatus.disconnected);
+    };
+  }, [client]);
+
   const sendMessage = useCallback(
     async (contents: string) => {
       if (!client) throw new Error("Not connected");
