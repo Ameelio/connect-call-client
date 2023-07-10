@@ -386,16 +386,40 @@ const useConnectCall = ({
 
   const pauseProducer = useCallback(
     async (label: ProducerLabel) => {
-      if (!client) throw new Error("Not connected");
-      await client.pauseProducer(label);
+      if (client) {
+        await client.pauseProducer(label);
+      } else {
+        const stream = localProducers[label]?.stream;
+
+        if (!stream) throw new Error("No such producer");
+
+        const track =
+          label === ProducerLabel.audio
+            ? stream.getAudioTracks()[0]
+            : stream.getVideoTracks()[0];
+
+        track.enabled = false;
+      }
     },
     [client]
   );
 
   const resumeProducer = useCallback(
     async (label: ProducerLabel) => {
-      if (!client) throw new Error("Not connected");
-      await client.resumeProducer(label);
+      if (client) {
+        await client.resumeProducer(label);
+      } else {
+        const stream = localProducers[label]?.stream;
+
+        if (!stream) throw new Error("No such producer");
+
+        const track =
+          label === ProducerLabel.audio
+            ? stream.getAudioTracks()[0]
+            : stream.getVideoTracks()[0];
+
+        track.enabled = true;
+      }
     },
     [client]
   );
