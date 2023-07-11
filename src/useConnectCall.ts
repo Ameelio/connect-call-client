@@ -350,6 +350,14 @@ const useConnectCall = ({
     return () => void disconnect();
   }, [disconnect]);
 
+  useEffect(() => {
+    if (!client) return;
+    setClientStatus(ClientStatus.connected);
+    return () => {
+      setClientStatus(ClientStatus.disconnected);
+    };
+  }, [client]);
+
   const sendMessage = useCallback(
     async (contents: string) => {
       if (!client) throw new Error("Not connected");
@@ -391,16 +399,48 @@ const useConnectCall = ({
 
   const pauseProducer = useCallback(
     async (label: ProducerLabel) => {
-      if (!client) throw new Error("Not connected");
-      await client.pauseProducer(label);
+      if (client) {
+        await client.pauseProducer(label);
+      } else {
+        const producer = localProducers[label];
+
+        if (!producer) throw new Error("No such producer");
+
+        const track =
+          label === ProducerLabel.audio
+            ? producer.stream.getAudioTracks()[0]
+            : producer.stream.getVideoTracks()[0];
+
+        track.enabled = false;
+        setLocalProducers({
+          ...localProducers,
+          [label]: { stream: producer.stream, paused: true },
+        });
+      }
     },
     [client]
   );
 
   const resumeProducer = useCallback(
     async (label: ProducerLabel) => {
-      if (!client) throw new Error("Not connected");
-      await client.resumeProducer(label);
+      if (client) {
+        await client.resumeProducer(label);
+      } else {
+        const producer = localProducers[label];
+
+        if (!producer) throw new Error("No such producer");
+
+        const track =
+          label === ProducerLabel.audio
+            ? producer.stream.getAudioTracks()[0]
+            : producer.stream.getVideoTracks()[0];
+
+        track.enabled = true;
+        setLocalProducers({
+          ...localProducers,
+          [label]: { stream: producer.stream, paused: false },
+        });
+      }
     },
     [client]
   );
