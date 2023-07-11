@@ -402,16 +402,20 @@ const useConnectCall = ({
       if (client) {
         await client.pauseProducer(label);
       } else {
-        const stream = localProducers[label]?.stream;
+        const producer = localProducers[label];
 
-        if (!stream) throw new Error("No such producer");
+        if (!producer) throw new Error("No such producer");
 
         const track =
           label === ProducerLabel.audio
-            ? stream.getAudioTracks()[0]
-            : stream.getVideoTracks()[0];
+            ? producer.stream.getAudioTracks()[0]
+            : producer.stream.getVideoTracks()[0];
 
         track.enabled = false;
+        setLocalProducers({
+          ...localProducers,
+          [label]: { stream: producer.stream, paused: true },
+        });
       }
     },
     [client]
@@ -422,16 +426,20 @@ const useConnectCall = ({
       if (client) {
         await client.resumeProducer(label);
       } else {
-        const stream = localProducers[label]?.stream;
+        const producer = localProducer[label];
 
-        if (!stream) throw new Error("No such producer");
+        if (!producer) throw new Error("No such producer");
 
         const track =
           label === ProducerLabel.audio
-            ? stream.getAudioTracks()[0]
-            : stream.getVideoTracks()[0];
+            ? producer.stream.getAudioTracks()[0]
+            : producer.stream.getVideoTracks()[0];
 
         track.enabled = true;
+        setLocalProducers({
+          ...localProducers,
+          [label]: { stream: producer.stream, paused: false },
+        });
       }
     },
     [client]
