@@ -426,7 +426,7 @@ const useConnectCall = ({
       if (client) {
         await client.resumeProducer(label);
       } else {
-        const producer = localProducer[label];
+        const producer = localProducers[label];
 
         if (!producer) throw new Error("No such producer");
 
