@@ -418,7 +418,7 @@ const useConnectCall = ({
         });
       }
     },
-    [client]
+    [client, localProducers]
   );
 
   const resumeProducer = useCallback(
@@ -442,7 +442,7 @@ const useConnectCall = ({
         });
       }
     },
-    [client]
+    [client, localProducers]
   );
 
   // Operations
