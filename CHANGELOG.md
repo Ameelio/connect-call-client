@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.4.0]
+
+## MINOR
+
+- `pauseProducer` and `resumeProducer` now work when disconnected; changes will be applied when reconnected
+
+## PATCH
+
+- `clientStatus` now reads `disconnected` when in the middle of an automatic reconnection that is not yet complete
+
 ## [2.3.2]
 
 ## PATCH
