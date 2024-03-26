@@ -69,6 +69,8 @@ export type ConnectCall = {
   enableFrux: () => void;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
+  enableConnectionMonitoring: () => void;
+  disableConnectionMonitoring: () => void;
 
   // Debugging only
   simulatePingLatency: (ping: number) => void;
@@ -522,13 +524,21 @@ const useConnectCall = ({
     },
     [client]
   );
-
   const resumeConsumer = useCallback(
     async (peerId: string, label: ProducerLabel) => {
       if (client) await client.resumeConsumer(peerId, label);
     },
     [client]
   );
+
+  const enableConnectionMonitoring = useCallback(() => {
+    if (!client) throw new Error("Not connected");
+    return client.enableConnectionMonitoring();
+  }, [client]);
+  const disableConnectionMonitoring = useCallback(() => {
+    if (!client) throw new Error("Not connected");
+    return client.disableConnectionMonitoring();
+  }, [client]);
 
   return {
     // Connection and room status
@@ -579,9 +589,10 @@ const useConnectCall = ({
     lowerHand,
     remoteLowerHand,
     setPreferredSimulcastLayer,
-
     pauseConsumer,
     resumeConsumer,
+    enableConnectionMonitoring,
+    disableConnectionMonitoring,
 
     // Debugging
     simulatePingLatency,

@@ -59,6 +59,7 @@ export default class ConnectionMonitor {
     this.interval = interval;
     this.emitter = mitt();
     this.socket.on("disconnect", () => {
+      this.emitter.all.clear();
       this.stop();
     });
   }
@@ -133,23 +134,20 @@ export default class ConnectionMonitor {
    * starts the monitor
    */
   start() {
-    if (!this.timer) {
-      this.socket.on(PONG_EVENT, this.handleResponse);
-      this.timer = setInterval(() => {
-        this.update();
-      }, this.interval);
-    }
+    if (this.timer) return; // already started
+    this.socket.on(PONG_EVENT, this.handleResponse);
+    this.timer = setInterval(() => {
+      this.update();
+    }, this.interval);
   }
 
   /**
    * stops the monitor
    */
   stop() {
-    if (this.timer) {
-      this.emitter.all.clear();
-      this.socket.off(PONG_EVENT, this.handleResponse);
-      clearInterval(this.timer);
-      this.timer = undefined;
-    }
+    if (!this.timer) return; // already stopped
+    this.socket.off(PONG_EVENT, this.handleResponse);
+    clearInterval(this.timer);
+    this.timer = undefined;
   }
 }
