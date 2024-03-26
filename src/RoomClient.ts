@@ -418,7 +418,19 @@ class RoomClient {
       producer,
     };
 
+    // The `ended` event of the MediaStreamTrack interface is fired
+    // when playback or streaming has stopped because the end of
+    // the media was reached or because no further data is available.
     track.addEventListener("ended", () => {
+      const localProducer = this.localProducers[label];
+      if (localProducer && localProducer.producer.track === track) {
+        this.closeProducer(label);
+      }
+    });
+
+    // The `mute` event is sent to a MediaStreamTrack when the track's source
+    // is temporarily unable to provide media data.
+    track.addEventListener("mute", () => {
       const localProducer = this.localProducers[label];
       if (localProducer && localProducer.producer.track === track) {
         this.closeProducer(label);
