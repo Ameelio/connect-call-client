@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## MINOR
 
 - `disableConnectionMonitoring` and `enableConnectionMonitoring` may be used to disable the latency timer when timers are known to be unreliable
+- `enableFrux` is now configuration, not a callback
 
 ## [2.4.0]
 

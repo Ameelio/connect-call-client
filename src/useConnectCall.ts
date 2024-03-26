@@ -21,6 +21,14 @@ type Props = {
   onPeerDisconnected?: (user: User) => void;
   onTimer?: (name: string, msRemaining: number, msElapsed: number) => void;
   onNewMessage?: (message: Message) => void;
+  /**
+   * FRUX will automatically pause the user's video when they have a bad
+   * connection (average ping latency). It will also prevent them from
+   * resuming the video while the connection remains bad.
+   *
+   * This can not be disabled once it is turned on.
+   */
+  enableFrux?: boolean;
 };
 
 export type Message = {
@@ -66,7 +74,6 @@ export type ConnectCall = {
   resumeConsumer: (peerId: string, label: ProducerLabel) => Promise<void>;
   raiseHand: () => Promise<void>;
   lowerHand: () => Promise<void>;
-  enableFrux: () => void;
   remoteLowerHand: (targetUserId: string) => Promise<void>;
   disconnect: () => Promise<void>;
   enableConnectionMonitoring: () => void;
@@ -118,6 +125,7 @@ const useConnectCall = ({
   onPeerDisconnected,
   onTimer,
   onNewMessage,
+  enableFrux,
 }: Props): ConnectCall => {
   const [client, setClient] = useState<RoomClient>();
   const [localProducers, setLocalProducers] = useState<
@@ -199,12 +207,6 @@ const useConnectCall = ({
     });
   }, []);
 
-  const [fruxEnabled, setFruxEnabled] = useState(false);
-
-  const enableFrux = useCallback(() => {
-    setFruxEnabled(true);
-  }, []);
-
   const simulatePingLatency = useCallback(
     (ping: number) => {
       if (client) client.simulatePingLatency(ping);
@@ -216,14 +218,12 @@ const useConnectCall = ({
     if (client) client.stopSimulatingPingLatency();
   }, [client]);
 
-  // Respond to fruxEnabled.
-  // This way, if fruxEnabled is set before the client is initialized,
-  // we will still respond.
+  // enable FRUX behavior (once the client is initialized, if necessary)
   useEffect(() => {
-    if (fruxEnabled && client) {
+    if (enableFrux && client) {
       client.enableFrux();
     }
-  }, [fruxEnabled, client]);
+  }, [enableFrux, client]);
 
   const reinitializeClient = useCallback(
     async (
@@ -545,9 +545,6 @@ const useConnectCall = ({
     clientStatus,
     callStatus,
     error,
-
-    // Frux
-    enableFrux,
 
     // Peers, including their streams
     peers,

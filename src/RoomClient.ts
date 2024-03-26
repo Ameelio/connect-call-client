@@ -254,7 +254,7 @@ class RoomClient {
       // Update local latest status
       this.user.status = selfReport.status;
 
-      // Respond to frux
+      // FRUX: Pause my video when I have a bad connection
       if (this.fruxEnabled) {
         this.user.connectionState = selfReport.connectionState;
 
@@ -483,7 +483,7 @@ class RoomClient {
     )
       return;
 
-    // Do not allow resuming video when connection is bad
+    // FRUX: Do not allow resuming my video when my connection is bad
     if (
       label === ProducerLabel.video &&
       this.fruxEnabled &&
