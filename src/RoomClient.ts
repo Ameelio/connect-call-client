@@ -118,7 +118,6 @@ class RoomClient {
   > = {};
   private consumers: Map<string, { consumer: Consumer; stream: MediaStream }> =
     new Map();
-  private peers: Record<string, Peer> = {};
   public user: {
     id: string;
     role: Role;
@@ -220,6 +219,14 @@ class RoomClient {
 
   enableFrux() {
     this.fruxEnabled = true;
+  }
+
+  enableConnectionMonitoring() {
+    this.client.connectionMonitor.start();
+  }
+
+  disableConnectionMonitoring() {
+    this.client.connectionMonitor.stop();
   }
 
   on<E extends keyof Events>(name: E, handler: (data: Events[E]) => void) {
